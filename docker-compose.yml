@@ -1,0 +1,38 @@
+services:
+  db:
+    image: postgres
+    container_name: postgres_db
+    restart: always
+    environment:
+      POSTGRES_DB: unihub
+      POSTGRES_USER: admin
+      POSTGRES_PASSWORD: securepassword
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data # Persistent storage
+    healthcheck:
+      test: ["CMD", "pg_isready", "-U", "admin"]
+      interval: 10s
+      retries: 5
+      timeout: 5s
+
+  web:
+    build: .
+    container_name: django_app
+    restart: always
+    depends_on:
+      db:
+        condition: service_healthy # Ensures PostgreSQL is fully started before Django starts
+    volumes:
+      - .:/app
+    command: python manage.py runserver 0.0.0.0:8000
+    ports:
+      - "8000:8000"
+    environment:
+      - DB_HOST=db
+      - DB_NAME=unihub
+      - DB_USER=admin
+      - DB_PASSWORD=securepassword
+volumes:
+  postgres_data:
