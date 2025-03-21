@@ -5,6 +5,7 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework_simplejwt.tokens import RefreshToken
+from django.views.generic import TemplateView
 from django.core.mail import send_mail
 from django.contrib.auth.tokens import default_token_generator
 from django.contrib.sites.shortcuts import get_current_site
@@ -30,6 +31,7 @@ from django.core.mail import send_mail
 from django.utils.crypto import get_random_string
 from .models import OTPVerification
 from django.contrib.auth.hashers import make_password
+from django.views.decorators.csrf import csrf_exempt
 
 User = get_user_model()
 
@@ -156,6 +158,8 @@ class RequestOTPReset(APIView):
         messages.success(request, 'OTP sent to your email.')
         return redirect('verify-otp', email=email)
     
+class DashboardView(TemplateView):
+    template_name = "authentication/dashboard.html"
     
 # Signup API (Register)
 class RegisterView(APIView):
@@ -198,10 +202,6 @@ class VerifyEmailView(APIView):
         except User.DoesNotExist:
             return Response({'error': 'User not found'}, status=status.HTTP_404_NOT_FOUND)
 
-        
-
-
-
 class RequestPasswordResetView(APIView):
     permission_classes = [AllowAny]
 
@@ -231,7 +231,6 @@ class RequestPasswordResetView(APIView):
         )
 
         return Response({'message': 'OTP sent to email'}, status=status.HTTP_200_OK)
-
 
 # Login API
 class LoginView(APIView):
@@ -324,7 +323,6 @@ class UserProfileView(APIView):
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 # Signup Page (HTML)
-
 def signup_page(request):
     if request.method == "POST":
         first_name = request.POST.get("first_name")
@@ -335,8 +333,17 @@ def signup_page(request):
         date_of_birth = request.POST.get("date_of_birth")
         academic_year = request.POST.get("academic_year")
 
+        # Check if the email or username is already in use
+        if User.objects.filter(email=email).exists():
+            messages.error(request, "Email is already registered.")
+            return redirect("signup-page")
+
+        if User.objects.filter(username=username).exists():
+            messages.error(request, "Username is already taken.")
+            return redirect("signup-page")
+
         # Create and save the user
-        user = get_user_model().create_user(
+        user = User.objects.create_user(
             first_name=first_name,
             last_name=last_name,
             email=email,
@@ -352,19 +359,37 @@ def signup_page(request):
         request.session["refresh_token"] = str(refresh)
 
         login(request, user)  # Log in the user
-        return redirect("login-page")
-  # Redirect to a dashboard instead of an API page
+        return redirect("dashboard")  # Redirect to dashboard after login
 
     return render(request, "authentication/signup.html")
 
-
-# Login Page (HTML)
+@csrf_exempt  # Remove this if CSRF protection is required
 def login_page(request):
     if request.method == "POST":
-        data = json.loads(request.body)
-        user = authenticate(username=data["username"], password=data["password"])
-        if user:
-            login(request, user)
-            return redirect("dashboard")  # Redirect to dashboard after login
-    return render(request, "authentication/login.html")
+        try:
+            if request.content_type == "application/json":
+                data = json.loads(request.body.decode("utf-8"))  # Expecting JSON
+                username = data.get("username")
+                password = data.get("password")
+            else:
+                username = request.POST.get("username")  # Handle form data
+                password = request.POST.get("password")
 
+            if not username or not password:
+                messages.error(request, "Username and password are required.")
+                return redirect("login-page")
+
+            user = authenticate(username=username, password=password)
+            if user:
+                login(request, user)
+
+                # Ensure "dashboard" exists in `urls.py`
+                return redirect("dashboard")  
+
+            messages.error(request, "Invalid username or password.")
+            return redirect("login-page")
+
+        except json.JSONDecodeError:
+            return JsonResponse({"error": "Invalid JSON format"}, status=400)
+
+    return render(request, "authentication/login.html")

@@ -11,6 +11,7 @@ urlpatterns = [
     # API endpoints
     path('signup/', views.RegisterView.as_view(), name='signup'),
     path('login/', views.LoginView.as_view(), name='login'),
+    path('dashboard/', views.DashboardView.as_view(), name='dashboard'),  
     path('profile/', views.UserProfileView.as_view(), name='profile'),
     path('request-otp-reset/', views.RequestOTPReset.as_view(), name='api-request-otp-reset'),
     path('verify-otp-api/', views.VerifyOTPReset.as_view(), name='verify-otp-api'),
