@@ -32,6 +32,7 @@ from django.utils.crypto import get_random_string
 from .models import OTPVerification
 from django.contrib.auth.hashers import make_password
 from django.views.decorators.csrf import csrf_exempt
+from django.contrib.auth.models import User
 
 User = get_user_model()
 
@@ -164,28 +165,91 @@ class DashboardView(TemplateView):
 # Signup API (Register)
 class RegisterView(APIView):
     permission_classes = [AllowAny]
-    
+
     def post(self, request):
         serializer = RegisterSerializer(data=request.data)
         if serializer.is_valid():
             user = serializer.save()
-            user.is_active = False  # Require email verification
+            user.is_active = False  # User should be inactive until email verification
             user.save()
-            
-            # Send Verification Email
-            token = default_token_generator.make_token(user)
-            verification_link = f"http://{get_current_site(request).domain}{reverse('email-verify', args=[token])}"
+
+            # Generate OTP
+            otp = get_random_string(length=6, allowed_chars='1234567890')
+            cache.set(f"otp_{user.email}", otp, timeout=300)  # Cache the OTP for 5 minutes
+
+            # Send OTP to email
             send_mail(
-                'Email Verification',
-                f'Click the link to verify your email: {verification_link}',
+                'Email Verification OTP',
+                f'Your OTP for email verification is: {otp}\nThis OTP is valid for 5 minutes.',
                 'no-reply@unihub.com',
                 [user.email],
                 fail_silently=False,
             )
-            
-            return Response({'message': 'User registered successfully. Check your email to verify your account.'}, status=status.HTTP_201_CREATED)
-        return redirect('login-page')  
 
+            # Redirect to OTP verification page
+            return redirect('verify-signup-otp', email=user.email)
+
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+    
+class VerifyOTPView(APIView):
+    permission_classes = [AllowAny]
+
+    def post(self, request, email):
+        otp = request.data.get('otp')
+
+        if not otp:
+            return Response({'error': 'OTP is required'}, status=status.HTTP_400_BAD_REQUEST)
+
+        # Get the OTP from the cache
+        cached_otp = cache.get(f"otp_{email}")
+
+        if cached_otp and cached_otp == otp:
+            # OTP is valid, activate the user
+            try:
+                user = get_user_model().objects.get(email=email)
+                user.is_active = True
+                user.save()
+
+                # Invalidate the OTP after successful verification
+                cache.delete(f"otp_{email}")
+
+                return Response({'message': 'Email verified successfully!'}, status=status.HTTP_200_OK)
+
+            except User.DoesNotExist:
+                return Response({'error': 'User not found'}, status=status.HTTP_404_NOT_FOUND)
+        else:
+            return Response({'error': 'Invalid or expired OTP'}, status=status.HTTP_400_BAD_REQUEST)
+
+def verify_signup_otp(request, email):  # Accept email as a parameter
+    if request.method == "GET":
+        return render(request, 'authentication/verify_otp.html', {'email': email})
+
+    elif request.method == "POST":
+        entered_otp = request.POST.get('otp')
+
+        # Check if the email is registered
+        if not User.objects.filter(email=email).exists():
+            messages.error(request, "Email not found. Please register first.")
+            return redirect('signup-page')
+
+        cached_otp = cache.get(f"otp_{email}")
+
+        if entered_otp == cached_otp:
+            # OTP is correct, activate the user
+            user = User.objects.get(email=email)
+            user.is_active = True
+            user.save()
+
+            # Generate JWT tokens for automatic login
+            refresh = RefreshToken.for_user(user)
+            request.session["access_token"] = str(refresh.access_token)
+            request.session["refresh_token"] = str(refresh)
+
+            login(request, user)
+            return redirect('dashboard')
+        else:
+            messages.error(request, "Invalid OTP. Please try again.")
+            return redirect('verify-signup-otp', email=email)  # Pass the email back to the OTP page
 
 # Email Verification API
 class VerifyEmailView(APIView):
@@ -235,14 +299,19 @@ class RequestPasswordResetView(APIView):
 # Login API
 class LoginView(APIView):
     permission_classes = [AllowAny]
-    
+
     def post(self, request):
         serializer = LoginSerializer(data=request.data)
         if serializer.is_valid():
             user = authenticate(request, username=serializer.validated_data['email'], password=serializer.validated_data['password'] )
             if user:
+                if not user.is_active:
+                    # Redirect to OTP verification page if the user is not active
+                    return redirect('verify-signup-otp', email=user.email)
+
                 tokens = get_tokens_for_user(user)
                 return Response({'tokens': tokens}, status=status.HTTP_200_OK)
+        
         return Response({'error': 'Invalid Credentials'}, status=status.HTTP_401_UNAUTHORIZED)
     
 class PasswordResetView(APIView):
@@ -353,15 +422,41 @@ def signup_page(request):
             academic_year=academic_year,
         )
 
-        # Generate JWT tokens for automatic login
-        refresh = RefreshToken.for_user(user)
-        request.session["access_token"] = str(refresh.access_token)
-        request.session["refresh_token"] = str(refresh)
+        # Set the user as inactive until they verify their email
+        user.is_active = False
+        user.save()
 
-        login(request, user)  # Log in the user
-        return redirect("dashboard")  # Redirect to dashboard after login
+        # Generate OTP for email verification
+        otp = get_random_string(length=6, allowed_chars='1234567890')
+        cache.set(f"otp_{user.email}", otp, timeout=300)  # Cache OTP for 5 minutes
+
+        # Send OTP to user's email
+        send_mail(
+            'Email Verification OTP',
+            f'Your OTP for email verification is: {otp}\nThis OTP is valid for 5 minutes.',
+            'no-reply@unihub.com',
+            [user.email],
+            fail_silently=False,
+        )
+        print(f"Generated OTP: {otp} for {user.email}")
+
+        # Redirect to OTP verification page
+        return redirect(reverse('verify-signup-otp', kwargs={'email': user.email}))
 
     return render(request, "authentication/signup.html")
+
+from django.core.mail import send_mail
+from django.conf import settings
+
+def send_otp_email(email, otp):
+    subject = "Your OTP Code"
+    message = f"Your OTP code is {otp}. Please use this to verify your email."
+    from_email = settings.DEFAULT_FROM_EMAIL
+
+    try:
+        send_mail(subject, message, from_email, [email])
+    except Exception as e:
+        print(f"Error sending OTP email: {e}")
 
 @csrf_exempt  # Remove this if CSRF protection is required
 def login_page(request):
