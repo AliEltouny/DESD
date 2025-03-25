@@ -1,3 +1,7 @@
+<<<<<<< HEAD
+=======
+# backend/authentication/views.py
+>>>>>>> master
 from django.contrib.auth import authenticate, login
 from django.shortcuts import render, redirect
 from rest_framework import status
@@ -36,7 +40,10 @@ from django.contrib.auth.models import User
 
 User = get_user_model()
 
+<<<<<<< HEAD
 
+=======
+>>>>>>> master
 def password_reset_page(request):
     return render(request, 'authentication/password_reset.html')
 
@@ -126,8 +133,11 @@ class VerifyOTPReset(APIView):
         except User.DoesNotExist:
             return Response({'error': 'User with this email does not exist'}, status=status.HTTP_404_NOT_FOUND)
 
+<<<<<<< HEAD
 
         
+=======
+>>>>>>> master
 class RequestOTPReset(APIView):
     permission_classes = [AllowAny]
 
@@ -158,10 +168,17 @@ class RequestOTPReset(APIView):
 
         messages.success(request, 'OTP sent to your email.')
         return redirect('verify-otp', email=email)
+<<<<<<< HEAD
     
 class DashboardView(TemplateView):
     template_name = "authentication/dashboard.html"
     
+=======
+
+class DashboardView(TemplateView):
+    template_name = "authentication/dashboard.html"
+
+>>>>>>> master
 # Signup API (Register)
 class RegisterView(APIView):
     permission_classes = [AllowAny]
@@ -186,11 +203,22 @@ class RegisterView(APIView):
                 fail_silently=False,
             )
 
+<<<<<<< HEAD
             # Redirect to OTP verification page
             return redirect('verify-signup-otp', email=user.email)
 
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
     
+=======
+            # Return a JSON response with the email
+            return Response(
+                {"message": "Signup successful, please verify your email", "email": user.email},
+                status=status.HTTP_201_CREATED
+            )
+
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+>>>>>>> master
 class VerifyOTPView(APIView):
     permission_classes = [AllowAny]
 
@@ -220,6 +248,52 @@ class VerifyOTPView(APIView):
         else:
             return Response({'error': 'Invalid or expired OTP'}, status=status.HTTP_400_BAD_REQUEST)
 
+<<<<<<< HEAD
+=======
+# Add the missing ResendOTPView
+class ResendOTPView(APIView):
+    permission_classes = [AllowAny]
+
+    def post(self, request, email):
+        try:
+            user = get_user_model().objects.get(email=email)
+            if user.is_active:
+                return Response(
+                    {"error": "User is already verified"},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+
+            # Generate a new OTP
+            otp = get_random_string(length=6, allowed_chars='1234567890')
+            cache.set(f"otp_{user.email}", otp, timeout=300)  # Cache the OTP for 5 minutes
+
+            # Send OTP to email
+            send_mail(
+                'Email Verification OTP',
+                f'Your new OTP for email verification is: {otp}\nThis OTP is valid for 5 minutes.',
+                'no-reply@unihub.com',
+                [user.email],
+                fail_silently=False,
+            )
+
+            return Response(
+                {"message": "New OTP sent to your email"},
+                status=status.HTTP_200_OK
+            )
+
+        except User.DoesNotExist:
+            return Response(
+                {"error": "User not found"},
+                status=status.HTTP_404_NOT_FOUND
+            )
+
+class TestCORSView(APIView):
+    permission_classes = [AllowAny]
+
+    def get(self, request):
+        return Response({"message": "CORS test successful"})
+
+>>>>>>> master
 def verify_signup_otp(request, email):  # Accept email as a parameter
     if request.method == "GET":
         return render(request, 'authentication/verify_otp.html', {'email': email})
@@ -303,17 +377,31 @@ class LoginView(APIView):
     def post(self, request):
         serializer = LoginSerializer(data=request.data)
         if serializer.is_valid():
+<<<<<<< HEAD
             user = authenticate(request, username=serializer.validated_data['email'], password=serializer.validated_data['password'] )
             if user:
                 if not user.is_active:
                     # Redirect to OTP verification page if the user is not active
                     return redirect('verify-signup-otp', email=user.email)
+=======
+            user = authenticate(request, username=serializer.validated_data['email'], password=serializer.validated_data['password'])
+            if user:
+                if not user.is_active:
+                    return Response(
+                        {"error": "User not verified", "email": user.email},
+                        status=status.HTTP_403_FORBIDDEN
+                    )
+>>>>>>> master
 
                 tokens = get_tokens_for_user(user)
                 return Response({'tokens': tokens}, status=status.HTTP_200_OK)
         
         return Response({'error': 'Invalid Credentials'}, status=status.HTTP_401_UNAUTHORIZED)
+<<<<<<< HEAD
     
+=======
+
+>>>>>>> master
 class PasswordResetView(APIView):
     permission_classes = [AllowAny]
 
@@ -331,7 +419,10 @@ class PasswordResetView(APIView):
         uid = urlsafe_base64_encode(smart_bytes(user.pk))
         reset_link = f"{request.scheme}://{get_current_site(request).domain}{reverse('password-reset-confirm', args=[uid, token])}"
 
+<<<<<<< HEAD
 
+=======
+>>>>>>> master
         # Send reset email
         send_mail(
             'Password Reset',
@@ -342,7 +433,10 @@ class PasswordResetView(APIView):
         )
 
         return Response({'message': 'Password reset email sent'}, status=status.HTTP_200_OK)
+<<<<<<< HEAD
     
+=======
+>>>>>>> master
 
 class ResetPasswordConfirmView(APIView):
     permission_classes = [AllowAny]
@@ -391,7 +485,10 @@ class UserProfileView(APIView):
             return Response(serializer.data, status=status.HTTP_200_OK)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
+<<<<<<< HEAD
 # Signup Page (HTML)
+=======
+>>>>>>> master
 def signup_page(request):
     if request.method == "POST":
         first_name = request.POST.get("first_name")

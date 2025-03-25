@@ -11,10 +11,15 @@ https://docs.djangoproject.com/en/5.1/ref/settings/
 """
 from datetime import timedelta
 from pathlib import Path
+<<<<<<< HEAD
+=======
+from decouple import config
+>>>>>>> master
 import os
 
 # settings.py
 
+<<<<<<< HEAD
 EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
 EMAIL_HOST = 'smtp.gmail.com'
 EMAIL_PORT = 587
@@ -22,6 +27,15 @@ EMAIL_USE_TLS = True
 EMAIL_HOST_USER = 'nourbenzahra4@gmail.com'      
 EMAIL_HOST_PASSWORD = 'tvcn mcdq cufw tsus'  
 DEFAULT_FROM_EMAIL = EMAIL_HOST_USER   
+=======
+EMAIL_BACKEND = config('EMAIL_BACKEND')
+EMAIL_HOST = config('EMAIL_HOST')
+EMAIL_PORT = config('EMAIL_PORT', cast=int)
+EMAIL_USE_TLS = config('EMAIL_USE_TLS', cast=bool)
+EMAIL_HOST_USER = config('EMAIL_HOST_USER')
+EMAIL_HOST_PASSWORD = config('EMAIL_HOST_PASSWORD')
+DEFAULT_FROM_EMAIL = config('DEFAULT_FROM_EMAIL')
+>>>>>>> master
 
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
@@ -31,7 +45,11 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 # See https://docs.djangoproject.com/en/5.1/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
+<<<<<<< HEAD
 SECRET_KEY = 'django-insecure-97h9)nynlh#h)89-fao*4l8po+_ii^6=w20n(57=jq^=41$q^z'
+=======
+SECRET_KEY = config('SECRET_KEY')
+>>>>>>> master
 
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
@@ -55,6 +73,10 @@ LOGGING = {
 # Application definition
 
 INSTALLED_APPS = [
+<<<<<<< HEAD
+=======
+    'corsheaders',
+>>>>>>> master
     'core',
     'accounts',
     'communities',
@@ -80,6 +102,11 @@ REST_FRAMEWORK = {
     ],
 }
 MIDDLEWARE = [
+<<<<<<< HEAD
+=======
+    "corsheaders.middleware.CorsMiddleware",  # Move CorsMiddleware to the top
+    "unihub.middleware.CustomCorsMiddleware",  # Add custom middleware
+>>>>>>> master
     'django.middleware.security.SecurityMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
@@ -89,6 +116,41 @@ MIDDLEWARE = [
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
 ]
 
+<<<<<<< HEAD
+=======
+# Allow specific origins (recommended for production)
+CORS_ALLOWED_ORIGINS = [
+    "http://localhost:3000",
+    "http://127.0.0.1:3000"
+]
+
+# Allow credentials (cookies, authorization headers)
+CORS_ALLOW_CREDENTIALS = True
+
+# Allow specific HTTP methods
+CORS_ALLOW_METHODS = [
+    'DELETE',
+    'GET',
+    'OPTIONS',
+    'PATCH',
+    'POST',
+    'PUT',
+]
+
+# Allow specific headers
+CORS_ALLOW_HEADERS = [
+    'accept',
+    'accept-encoding',
+    'authorization',
+    'content-type',
+    'dnt',
+    'origin',
+    'user-agent',
+    'x-csrftoken',
+    'x-requested-with',
+]
+
+>>>>>>> master
 ROOT_URLCONF = 'unihub.urls'
 
 TEMPLATES = [
@@ -115,11 +177,25 @@ WSGI_APPLICATION = 'unihub.wsgi.application'
 
 DATABASES = {
     'default': {
+<<<<<<< HEAD
         'ENGINE': 'django.db.backends.sqlite3',
         'NAME': BASE_DIR / "db.sqlite3",
     }
 }
 
+=======
+        'ENGINE': 'django.db.backends.postgresql',
+        'NAME': config('DB_NAME'),
+        'USER': config('DB_USER'),
+        'PASSWORD': config('DB_PASSWORD'),
+        'HOST': config('DB_HOST'),
+        'PORT': config('DB_PORT', default='5432'),
+    }
+}
+
+
+
+>>>>>>> master
 AUTH_USER_MODEL = 'accounts.User'
 
 # JWT Settings
