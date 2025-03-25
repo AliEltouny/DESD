@@ -1,0 +1,10 @@
+{
+  "reportMissingImports": false,
+  "reportMissingTypeStubs": false,
+  "pythonVersion": "3.10",
+  "venvPath": "/usr/local",
+  "venv": "lib/python3.10/site-packages",
+  "extraPaths": ["/usr/local/lib/python3.10/site-packages"],
+  "ignore": ["**/node_modules", "**/__pycache__"],
+  "typeCheckingMode": "off"
+}
