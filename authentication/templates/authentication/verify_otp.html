@@ -1,9 +1,0 @@
-<h3>Verify OTP</h3>
-<form method="post">
-    {% csrf_token %}
-    <input type="text" name="otp" placeholder="OTP" required>
-    <button type="submit">Verify OTP</button>
-</form>
-{% for msg in messages %}
-<p>{{msg}}</p>
-{% endfor %}

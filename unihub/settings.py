@@ -94,7 +94,10 @@ ROOT_URLCONF = 'unihub.urls'
 TEMPLATES = [
     {
         'BACKEND': 'django.template.backends.django.DjangoTemplates',
-        'DIRS': [BASE_DIR / 'templates'],   # <---- THIS IS IMPORTANT
+        'DIRS': [
+            BASE_DIR / 'authentication' / 'templates' / 'html',  # Pointing directly to the 'html' folder
+            BASE_DIR / 'authentication' / 'templates' / 'html' / 'pages',  # If you have a 'pages' folder inside 'html'
+        ],
         'APP_DIRS': True,
         'OPTIONS': {
             'context_processors': [
@@ -106,7 +109,6 @@ TEMPLATES = [
         },
     },
 ]
-
 
 WSGI_APPLICATION = 'unihub.wsgi.application'
 
@@ -163,7 +165,13 @@ USE_TZ = True
 # Static files (CSS, JavaScript, Images)
 # https://docs.djangoproject.com/en/5.1/howto/static-files/
 
-STATIC_URL = 'static/'
+STATIC_URL = '/static/'
+
+STATICFILES_DIRS = [
+    BASE_DIR / "static",  # Points to desd-main/static/
+]
+
+STATIC_ROOT = BASE_DIR / 'staticfiles'  # For production, collect static files here
 
 # Default primary key field type
 # https://docs.djangoproject.com/en/5.1/ref/settings/#default-auto-field

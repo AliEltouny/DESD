@@ -1,7 +1,9 @@
+import re
 from django.contrib.auth import authenticate, login
 from django.shortcuts import render, redirect
 from rest_framework import status
 from rest_framework.response import Response
+from rest_framework.exceptions import ValidationError
 from rest_framework.views import APIView
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework_simplejwt.tokens import RefreshToken
@@ -11,6 +13,7 @@ from django.contrib.auth.tokens import default_token_generator
 from django.contrib.sites.shortcuts import get_current_site
 from django.urls import reverse
 from authentication.serializers import RegisterSerializer, LoginSerializer
+from rest_framework import serializers
 from accounts.serializers import UserProfileSerializer
 from accounts.models import User
 import json
@@ -170,7 +173,7 @@ class RegisterView(APIView):
         serializer = RegisterSerializer(data=request.data)
         if serializer.is_valid():
             user = serializer.save()
-            user.is_active = False  # User should be inactive until email verification
+            user.is_active = False  # Email verification required
             user.save()
 
             # Generate OTP
@@ -190,6 +193,33 @@ class RegisterView(APIView):
             return redirect('verify-signup-otp', email=user.email)
 
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+class RegisterSerializer(serializers.ModelSerializer):
+    password = serializers.CharField(write_only=True, min_length=8)
+    email = serializers.EmailField()
+
+    class Meta:
+        model = User
+        fields = ['first_name', 'last_name', 'email', 'username', 'password', 'date_of_birth', 'academic_year']
+        extra_kwargs = {'password': {'write_only': True}}
+
+    def validate_email(self, value):
+        # Allow only emails from uwe.ac.uk and live.uwe.ac.uk
+        if not re.match(r"^[a-zA-Z0-9._%+-]+@(uwe\.ac\.uk|live\.uwe\.ac\.uk)$", value):
+            raise serializers.ValidationError("Email must be a UWE email (@uwe.ac.uk or @live.uwe.ac.uk).")
+        return value
+
+    def validate_password(self, value):
+        if len(value) < 8:
+            raise serializers.ValidationError("Password must be at least 8 characters long.")
+        if not any(char.isdigit() for char in value):
+            raise serializers.ValidationError("Password must contain at least one digit.")
+        if not any(char.isalpha() for char in value):
+            raise serializers.ValidationError("Password must contain at least one letter.")
+        return value
+
+    def create(self, validated_data):
+        return User.objects.create_user(**validated_data)
     
 class VerifyOTPView(APIView):
     permission_classes = [AllowAny]
@@ -246,7 +276,7 @@ def verify_signup_otp(request, email):  # Accept email as a parameter
             request.session["refresh_token"] = str(refresh)
 
             login(request, user)
-            return redirect('dashboard')
+            return redirect('index')
         else:
             messages.error(request, "Invalid OTP. Please try again.")
             return redirect('verify-signup-otp', email=email)  # Pass the email back to the OTP page
@@ -342,7 +372,6 @@ class PasswordResetView(APIView):
         )
 
         return Response({'message': 'Password reset email sent'}, status=status.HTTP_200_OK)
-    
 
 class ResetPasswordConfirmView(APIView):
     permission_classes = [AllowAny]
@@ -394,54 +423,44 @@ class UserProfileView(APIView):
 # Signup Page (HTML)
 def signup_page(request):
     if request.method == "POST":
-        first_name = request.POST.get("first_name")
-        last_name = request.POST.get("last_name")
-        email = request.POST.get("email")
-        username = request.POST.get("username")
-        password = request.POST.get("password")
-        date_of_birth = request.POST.get("date_of_birth")
-        academic_year = request.POST.get("academic_year")
+        data = {
+            "first_name": request.POST.get("first_name"),
+            "last_name": request.POST.get("last_name"),
+            "email": request.POST.get("email"),
+            "username": request.POST.get("username"),
+            "password": request.POST.get("password"),
+            "date_of_birth": request.POST.get("date_of_birth"),
+            "academic_year": request.POST.get("academic_year"),
+        }
 
-        # Check if the email or username is already in use
-        if User.objects.filter(email=email).exists():
-            messages.error(request, "Email is already registered.")
+        serializer = RegisterSerializer(data=data)
+        
+        try:
+            if serializer.is_valid(raise_exception=True):
+                user = serializer.save()
+                user.is_active = False  # Set user as inactive until email verification
+                user.save()
+
+                # Generate OTP for email verification
+                otp = get_random_string(length=6, allowed_chars='1234567890')
+                cache.set(f"otp_{user.email}", otp, timeout=300)  # Cache OTP for 5 minutes
+
+                # Send OTP to user's email
+                send_mail(
+                    'Email Verification OTP',
+                    f'Your OTP for email verification is: {otp}\nThis OTP is valid for 5 minutes.',
+                    'no-reply@unihub.com',
+                    [user.email],
+                    fail_silently=False,
+                )
+                print(f"Generated OTP: {otp} for {user.email}")
+
+                return redirect(reverse('verify-signup-otp', kwargs={'email': user.email}))
+        except ValidationError as e:
+            for field, errors in e.detail.items():
+                for error in errors:
+                    messages.error(request, f"{field}: {error}")
             return redirect("signup-page")
-
-        if User.objects.filter(username=username).exists():
-            messages.error(request, "Username is already taken.")
-            return redirect("signup-page")
-
-        # Create and save the user
-        user = User.objects.create_user(
-            first_name=first_name,
-            last_name=last_name,
-            email=email,
-            username=username,
-            password=password,
-            date_of_birth=date_of_birth,
-            academic_year=academic_year,
-        )
-
-        # Set the user as inactive until they verify their email
-        user.is_active = False
-        user.save()
-
-        # Generate OTP for email verification
-        otp = get_random_string(length=6, allowed_chars='1234567890')
-        cache.set(f"otp_{user.email}", otp, timeout=300)  # Cache OTP for 5 minutes
-
-        # Send OTP to user's email
-        send_mail(
-            'Email Verification OTP',
-            f'Your OTP for email verification is: {otp}\nThis OTP is valid for 5 minutes.',
-            'no-reply@unihub.com',
-            [user.email],
-            fail_silently=False,
-        )
-        print(f"Generated OTP: {otp} for {user.email}")
-
-        # Redirect to OTP verification page
-        return redirect(reverse('verify-signup-otp', kwargs={'email': user.email}))
 
     return render(request, "authentication/signup.html")
 
@@ -478,8 +497,8 @@ def login_page(request):
             if user:
                 login(request, user)
 
-                # Ensure "dashboard" exists in `urls.py`
-                return redirect("dashboard")  
+                # Ensure "index" exists in `urls.py`
+                return redirect("index")  
 
             messages.error(request, "Invalid username or password.")
             return redirect("login-page")
@@ -488,3 +507,6 @@ def login_page(request):
             return JsonResponse({"error": "Invalid JSON format"}, status=400)
 
     return render(request, "authentication/login.html")
+
+def index_page(request):
+    return render(request, "pages/index.html")

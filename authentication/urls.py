@@ -1,5 +1,6 @@
 from django.urls import path
 from .views import VerifyOTPView
+from django.views.generic import TemplateView
 from . import views
 
 urlpatterns = [
@@ -12,6 +13,7 @@ urlpatterns = [
     # API endpoints
     path('signup/', views.RegisterView.as_view(), name='signup'),
     path('login/', views.LoginView.as_view(), name='login'),
+    path('', TemplateView.as_view(template_name="index.html"), name="index"),
     path('dashboard/', views.DashboardView.as_view(), name='dashboard'),  
     path('profile/', views.UserProfileView.as_view(), name='profile'),
     path('request-otp-reset/', views.RequestOTPReset.as_view(), name='api-request-otp-reset'),

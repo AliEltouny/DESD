@@ -4,6 +4,7 @@ from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView
 
 urlpatterns = [
     path("admin/", admin.site.urls),
+    path('api/', include('api.urls')),
     path("", include("core.urls")),  # Ensure 'core.urls' has a home page
     path("api/auth/", include("authentication.urls")),  # Include auth endpoints
     path("api/token/", TokenObtainPairView.as_view(), name="token_obtain_pair"),
