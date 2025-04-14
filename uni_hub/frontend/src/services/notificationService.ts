@@ -1,73 +1,99 @@
 // services/notificationService.ts
-import axios, { AxiosError } from 'axios';
-import { Notification } from '../types/notification';
+import { API_URL } from "./api";
 
-const API_URL = '/api/notifications/';
+export interface Notification {
+  id: number;
+  notification_type: string;
+  title: string;
+  message: string;
+  is_read: boolean;
+  created_at: string;
+  sender?: {
+    id: number;
+    username: string;
+    email: string;
+    full_name: string;
+  };
+  content_object?: any; // This will be the related object (community, post, etc.)
+}
 
 export const fetchNotifications = async (): Promise<Notification[]> => {
-  try {
-    const token = localStorage.getItem('access_token');
-    const response = await axios.get(API_URL, {
-      headers: {
-        'Authorization': `Bearer ${token}`,
-        'Cache-Control': 'no-cache'
-      }
-    });
-    return response.data;
-  } catch (error) {
-    const axiosError = error as AxiosError;
-    console.error('Notification fetch error:', {
-      status: axiosError.response?.status,
-      data: axiosError.response?.data,
-      message: axiosError.message
-    });
-    throw axiosError;
+  const response = await fetch(`${API_URL}/notifications/`, {
+    credentials: "include",
+  });
+  if (!response.ok) {
+    throw new Error("Failed to fetch notifications");
+  }
+  return response.json();
+};
+
+export const getUnreadNotificationsCount = async (): Promise<number> => {
+  const response = await fetch(`${API_URL}/notifications/unread/count/`, {
+    credentials: "include",
+  });
+  if (!response.ok) {
+    throw new Error("Failed to fetch unread notifications count");
+  }
+  const data = await response.json();
+  return data.count;
+};
+
+export const markSingleNotificationAsRead = async (id: number): Promise<void> => {
+  const response = await fetch(`${API_URL}/notifications/${id}/mark_as_read/`, {
+    method: "POST",
+    credentials: "include",
+  });
+  if (!response.ok) {
+    throw new Error("Failed to mark notification as read");
   }
 };
 
-// Update other methods similarly with proper error typing
-
-export const createNotification = async (message: string): Promise<Notification | null> => {
-  try {
-    const token = localStorage.getItem('access_token');
-    const response = await axios.post(`${API_URL}create/`, { message }, {
-      headers: {
-        'Authorization': `Bearer ${token}`
-      }
-    });
-    return response.data;
-  } catch (error) {
-    console.error('Error creating notification:', error);
-    return null;
+export const markAllNotificationsAsRead = async (): Promise<void> => {
+  const response = await fetch(`${API_URL}/notifications/mark_all_as_read/`, {
+    method: "POST",
+    credentials: "include",
+  });
+  if (!response.ok) {
+    throw new Error("Failed to mark all notifications as read");
   }
 };
 
-export const markAllAsRead = async (): Promise<boolean> => {
-  try {
-    const token = localStorage.getItem('access_token');
-    await axios.patch(`${API_URL}mark-read/`, {}, {
-      headers: {
-        'Authorization': `Bearer ${token}`
-      }
-    });
-    return true;
-  } catch (error) {
-    console.error('Error marking all as read:', error);
-    return false;
+export const updateNotificationPreferences = async (
+  preferences: Partial<{
+    community_invites: boolean;
+    community_join_requests: boolean;
+    community_updates: boolean;
+    community_new_posts: boolean;
+    community_post_updates: boolean;
+    post_upvotes: boolean;
+    comment_upvotes: boolean;
+    comment_replies: boolean;
+    mention_notifications: boolean;
+    email_community_invites: boolean;
+    email_community_updates: boolean;
+    email_engagement: boolean;
+    push_notifications: boolean;
+  }>
+): Promise<void> => {
+  const response = await fetch(`${API_URL}/notification-preferences/`, {
+    method: "PATCH",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(preferences),
+    credentials: "include",
+  });
+  if (!response.ok) {
+    throw new Error("Failed to update notification preferences");
   }
 };
 
-export const markAsRead = async (id: number): Promise<boolean> => {
-  try {
-    const token = localStorage.getItem('access_token');
-    await axios.patch(`${API_URL}${id}/read/`, {}, {
-      headers: {
-        'Authorization': `Bearer ${token}`
-      }
-    });
-    return true;
-  } catch (error) {
-    console.error('Error marking as read:', error);
-    return false;
+export const getNotificationPreferences = async (): Promise<any> => {
+  const response = await fetch(`${API_URL}/notification-preferences/`, {
+    credentials: "include",
+  });
+  if (!response.ok) {
+    throw new Error("Failed to fetch notification preferences");
   }
+  return response.json();
 };

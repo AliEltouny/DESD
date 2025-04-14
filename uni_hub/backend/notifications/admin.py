@@ -1,9 +1,13 @@
-# admin.py
 from django.contrib import admin
-from .models import Notification
+from .models import Notification, NotificationPreference
 
-@admin.register(Notification)
 class NotificationAdmin(admin.ModelAdmin):
-    list_display = ('user_email', 'message', 'is_read', 'created_at')  # Changed from 'user' to 'user_email'
-    list_filter = ('is_read',)
-    search_fields = ('message', 'user_email')  # Changed from 'user__username' to 'user_email'
+    list_display = ('recipient', 'title', 'notification_type', 'is_read', 'created_at')
+    list_filter = ('notification_type', 'is_read', 'created_at')
+    search_fields = ('recipient__username', 'recipient__email', 'title', 'message')
+    raw_id_fields = ('recipient', 'sender')
+    readonly_fields = ('created_at',)
+    date_hierarchy = 'created_at'
+
+admin.site.register(Notification, NotificationAdmin)
+admin.site.register(NotificationPreference)

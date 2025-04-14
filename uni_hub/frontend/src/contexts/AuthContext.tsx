@@ -9,6 +9,14 @@ import React, {
   ReactNode,
   useCallback,
 } from "react";
+
+import {
+  fetchNotifications,
+  markSingleNotificationAsRead,
+  markAllNotificationsAsRead,
+  getUnreadNotificationsCount,
+} from "@/services/notificationService";
+
 import axios from "axios";
 import { useRouter } from "next/navigation";
 import { jwtDecode } from "jwt-decode";
@@ -24,12 +32,21 @@ interface User {
   academic_year?: number;
 }
 
+// Update the Notification interface in AuthContext.tsx
 interface Notification {
   id: number;
-  user_email: string;
+  notification_type: string;
+  title: string;
   message: string;
   is_read: boolean;
   created_at: string;
+  sender?: {
+    id: number;
+    username: string;
+    email: string;
+    full_name: string;
+  };
+  content_object?: any;
 }
 
 interface AuthContextType {
@@ -143,12 +160,12 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     try {
       setNotificationsLoading(true);
       setNotificationsError(null);
-      const response = await api.get("/notifications/");
-      setNotifications(response.data);
+      
+      const notifications = await fetchNotifications();
+      setNotifications(notifications);
     } catch (error) {
-      const err = error as Error;
-      setNotificationsError(err);
-      console.error('Notification refresh error:', err);
+      console.error('Notification refresh error:', error);
+      setNotificationsError(error as Error);
     } finally {
       setNotificationsLoading(false);
     }
@@ -156,21 +173,23 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
   const markNotificationAsRead = useCallback(async (id: number): Promise<void> => {
     try {
-      await api.patch(`/notifications/${id}/read/`, {});
+      await markSingleNotificationAsRead(id);
       setNotifications(prev => 
         prev.map(n => n.id === id ? { ...n, is_read: true } : n)
       );
     } catch (error) {
-      console.error('Error marking as read:', error);
+      console.error('Error marking notification as read:', error);
+      throw error;
     }
   }, []);
 
   const markAllNotificationsAsRead = useCallback(async (): Promise<void> => {
     try {
-      await api.patch("/notifications/mark-read/", {});
+      await markAllNotificationsAsRead();
       setNotifications(prev => prev.map(n => ({ ...n, is_read: true })));
     } catch (error) {
-      console.error('Error marking all as read:', error);
+      console.error('Error marking all notifications as read:', error);
+      throw error;
     }
   }, []);
 
@@ -350,8 +369,13 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   // Add notification polling when authenticated
   useEffect(() => {
     if (!isLoading && user) {
-      refreshNotifications();
-      const interval = setInterval(refreshNotifications, 30000);
+      const pollNotifications = async () => {
+        await refreshNotifications();
+        // You could also fetch unread count separately if needed
+      };
+      
+      pollNotifications();
+      const interval = setInterval(pollNotifications, 30000);
       return () => clearInterval(interval);
     }
   }, [isLoading, user, refreshNotifications]);

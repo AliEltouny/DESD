@@ -25,6 +25,15 @@ from .permissions import (
     IsPostAuthorOrCommunityAdminOrReadOnly, IsCommentAuthorOrCommunityAdminOrReadOnly
 )
 
+from notifications.utils import (
+    notify_community_invite,
+    notify_community_join_request,
+    notify_community_join_decision,
+    notify_new_post,
+    notify_post_upvote,
+    notify_comment_upvote,
+    notify_comment_reply
+)
 
 @method_decorator(csrf_exempt, name='dispatch')
 class CommunityViewSet(viewsets.ModelViewSet):
@@ -158,12 +167,16 @@ class CommunityViewSet(viewsets.ModelViewSet):
         # Check if community requires approval
         if community.requires_approval:
             # Create membership with pending status
-            Membership.objects.create(
+            membership = Membership.objects.create(
                 user=user,
                 community=community,
                 role='member',
                 status='pending'
             )
+            
+            # Notify admins about join request
+            notify_community_join_request(membership)
+            
             return Response(
                 {"detail": "Join request submitted. An admin will review your request."},
                 status=status.HTTP_201_CREATED
@@ -242,6 +255,13 @@ class CommunityViewSet(viewsets.ModelViewSet):
                 inviter=request.user,
                 status='pending'
             )
+        
+        # Create notification for invitee if they have an account
+        try:
+            invitee = User.objects.get(email=invitation.invitee_email)
+            notify_community_invite(invitation)
+        except User.DoesNotExist:
+            pass  # Will send email only
             
             # Send invitation email
             subject = f"Invitation to join {community.name} on Uni Hub"
@@ -361,6 +381,10 @@ class CommunityViewSet(viewsets.ModelViewSet):
         if approve:
             membership.status = 'approved'
             membership.save()
+            
+            # Notify user about approval
+            notify_community_join_decision(membership, approved=True)
+            
             return Response(
                 {"detail": "Membership request approved."},
                 status=status.HTTP_200_OK
@@ -368,6 +392,10 @@ class CommunityViewSet(viewsets.ModelViewSet):
         else:
             membership.status = 'rejected'
             membership.save()
+            
+            # Notify user about rejection
+            notify_community_join_decision(membership, approved=False)
+            
             return Response(
                 {"detail": "Membership request rejected."},
                 status=status.HTTP_200_OK
@@ -431,7 +459,10 @@ class PostViewSet(viewsets.ModelViewSet):
         ).exists():
             raise PermissionDenied("You must be a member of this community to post.")
         
-        serializer.save(author=self.request.user, community=community)
+        post = serializer.save(author=self.request.user, community=community)
+        
+        # Notify community members about new post
+        notify_new_post(post)
     
     @action(detail=True, methods=['post'], permission_classes=[IsAuthenticated])
     def upvote(self, request, pk=None, community_slug=None):
@@ -459,6 +490,10 @@ class PostViewSet(viewsets.ModelViewSet):
             )
         else:
             post.upvotes.add(user)
+            
+            # Notify post author about upvote
+            notify_post_upvote(post, user)
+            
             return Response(
                 {"detail": "Post upvoted."},
                 status=status.HTTP_200_OK
@@ -534,7 +569,11 @@ class CommentViewSet(viewsets.ModelViewSet):
         if parent_id:
             parent = get_object_or_404(Comment, id=parent_id, post=post)
         
-        serializer.save(author=self.request.user, post=post, parent=parent)
+        comment = serializer.save(author=self.request.user, post=post, parent=parent)
+        
+        # Notify about reply if this is a reply
+        if parent:
+            notify_comment_reply(comment)
     
     @action(detail=True, methods=['post'], permission_classes=[IsAuthenticated])
     def upvote(self, request, pk=None, post_pk=None, community_slug=None):
@@ -562,6 +601,10 @@ class CommentViewSet(viewsets.ModelViewSet):
             )
         else:
             comment.upvotes.add(user)
+            
+            # Notify comment author about upvote
+            notify_comment_upvote(comment, user)
+            
             return Response(
                 {"detail": "Comment upvoted."},
                 status=status.HTTP_200_OK

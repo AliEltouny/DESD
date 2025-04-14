@@ -22,6 +22,8 @@ from django.views.static import serve
 import os
 from django.views.decorators.csrf import csrf_exempt
 from rest_framework.decorators import api_view
+from rest_framework.routers import DefaultRouter
+from rest_framework_nested.routers import NestedDefaultRouter
 from django.http import HttpResponse
 
 # Special view to debug API requests
