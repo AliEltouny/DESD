@@ -286,6 +286,12 @@ export default function CommunityDetailPage() {
           <div className="px-4 py-2 bg-green-50 text-green-700 rounded-md border border-green-200 text-center">
             You are an Admin
           </div>
+          <Link
+            href={`/communities/${slug}/analytics`}
+            className="w-full px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors text-center"
+          >
+            View Analytics
+          </Link>
         </div>
       );
     }
@@ -451,6 +457,12 @@ export default function CommunityDetailPage() {
                     <div className="px-4 py-2 bg-green-50 text-green-700 rounded-md border border-green-200 text-center">
                       You are an Admin
                     </div>
+                    <Link
+                      href={`/communities/${slug}/analytics`}
+                      className="w-full px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors text-center"
+                    >
+                      View Analytics
+                    </Link>
                   </div>
                 ) : !community.is_member && (
                   <button
@@ -487,6 +499,14 @@ export default function CommunityDetailPage() {
                           ? "You are an Admin"
                           : "You are a Member"}
                       </div>
+                      {community.membership_role === "admin" && (
+                        <Link
+                          href={`/communities/${slug}/analytics`}
+                          className="w-full px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors text-center"
+                        >
+                          View Analytics
+                        </Link>
+                      )}
                       {community.membership_role !== "admin" && (
                         <button
                           onClick={handleLeaveCommunity}

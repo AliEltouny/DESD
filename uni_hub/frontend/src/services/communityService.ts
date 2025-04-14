@@ -561,3 +561,16 @@ export const upvoteComment = async (
   );
   return response.data;
 };
+
+// Analytics
+export const getCommunityAnalytics = async (communitySlug: string) => {
+  try {
+    const response = await api.get(
+      `/communities/${communitySlug}/analytics/`
+    );
+    return response.data;
+  } catch (error) {
+    console.error("Error fetching community analytics:", error);
+    throw error;
+  }
+};

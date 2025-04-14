@@ -12,7 +12,7 @@ from rest_framework.parsers import MultiPartParser, FormParser, JSONParser
 
 from drf_spectacular.utils import extend_schema, extend_schema_view, OpenApiParameter, OpenApiExample
 
-from ..models import Community, Membership, CommunityInvitation
+from ..models import Community, Membership, CommunityInvitation, Post
 from ..serializers import (
     CommunitySerializer, CommunityDetailSerializer, CommunityCreateSerializer,
     MembershipSerializer, CommunityInvitationSerializer
@@ -336,4 +336,176 @@ class CommunityViewSet(viewsets.ModelViewSet):
             return Response(
                 {"detail": message},
                 status=status.HTTP_404_NOT_FOUND
+            )
+    
+    @extend_schema(
+        summary="Get Community Analytics",
+        description="Retrieves analytics data for a community. Only available to community admins and moderators.",
+        responses={200: {'type': 'object', 'properties': {
+            'member_growth': {'type': 'object', 'description': 'Member growth over time'},
+            'post_activity': {'type': 'object', 'description': 'Post activity over time'},
+            'engagement_stats': {'type': 'object', 'description': 'Engagement statistics'},
+            'top_contributors': {'type': 'array', 'description': 'Top contributors to the community'},
+        }}},
+    )
+    @action(detail=True, methods=['get'], permission_classes=[IsAuthenticated])
+    def analytics(self, request, slug=None):
+        """Get analytics data for a community"""
+        try:
+            from django.db.models import Count, Sum, F
+            from django.db.models.functions import TruncDay, TruncMonth
+            from django.utils import timezone
+            import datetime
+            import traceback
+            
+            community = self.get_object()
+            
+            # Check if user is admin/moderator
+            user_is_admin_or_mod = Membership.objects.filter(
+                user=request.user,
+                community=community,
+                role__in=['admin', 'moderator'],
+                status='approved'
+            ).exists() or (community.creator == request.user)
+            
+            if not user_is_admin_or_mod:
+                return Response(
+                    {"detail": "You do not have permission to view analytics."},
+                    status=status.HTTP_403_FORBIDDEN
+                )
+            
+            # Calculate time periods
+            today = timezone.now()
+            thirty_days_ago = today - datetime.timedelta(days=30)
+            ninety_days_ago = today - datetime.timedelta(days=90)
+            
+            try:
+                # Member growth (last 30 days by day, last 90 days by month)
+                member_daily = Membership.objects.filter(
+                    community=community,
+                    created_at__gte=thirty_days_ago
+                ).annotate(
+                    day=TruncDay('created_at')
+                ).values('day').annotate(
+                    count=Count('id')
+                ).order_by('day')
+                
+                member_monthly = Membership.objects.filter(
+                    community=community,
+                    created_at__gte=ninety_days_ago
+                ).annotate(
+                    month=TruncMonth('created_at')
+                ).values('month').annotate(
+                    count=Count('id')
+                ).order_by('month')
+            except Exception as e:
+                print(f"Error in member growth: {str(e)}")
+                print(traceback.format_exc())
+                member_daily = []
+                member_monthly = []
+            
+            try:
+                # Post activity
+                post_activity = Post.objects.filter(
+                    community=community,
+                    created_at__gte=thirty_days_ago
+                ).annotate(
+                    day=TruncDay('created_at')
+                ).values('day').annotate(
+                    count=Count('id')
+                ).order_by('day')
+            except Exception as e:
+                print(f"Error in post activity: {str(e)}")
+                print(traceback.format_exc())
+                post_activity = []
+            
+            try:
+                # Engagement stats (upvotes and comments)
+                # First, get total posts
+                total_posts = Post.objects.filter(community=community).count()
+                
+                # Get upvotes count using annotate and Sum
+                upvotes_data = Post.objects.filter(community=community).annotate(
+                    upvote_count=Count('upvotes')
+                ).aggregate(
+                    total_upvotes=Sum('upvote_count')
+                )
+                
+                # Get comments count using annotate and Sum
+                comments_data = Post.objects.filter(community=community).annotate(
+                    comment_count=Count('comments')
+                ).aggregate(
+                    total_comments=Sum('comment_count')
+                )
+                
+                # Combine results
+                post_engagement = {
+                    'total_posts': total_posts,
+                    'total_upvotes': upvotes_data.get('total_upvotes', 0),
+                    'total_comments': comments_data.get('total_comments', 0)
+                }
+            except Exception as e:
+                print(f"Error in engagement stats: {str(e)}")
+                print(traceback.format_exc())
+                post_engagement = {
+                    'total_posts': 0,
+                    'total_upvotes': 0,
+                    'total_comments': 0
+                }
+            
+            # Calculate average engagement per post
+            avg_upvotes_per_post = 0
+            avg_comments_per_post = 0
+            if post_engagement.get('total_posts', 0) > 0:
+                avg_upvotes_per_post = post_engagement.get('total_upvotes', 0) / post_engagement.get('total_posts', 1) if post_engagement.get('total_upvotes') else 0
+                avg_comments_per_post = post_engagement.get('total_comments', 0) / post_engagement.get('total_posts', 1) if post_engagement.get('total_comments') else 0
+            
+            try:
+                # Top contributors (users who post most)
+                top_contributors = Post.objects.filter(
+                    community=community
+                ).values(
+                    'author_id', 
+                    'author__username'
+                ).annotate(
+                    post_count=Count('id')
+                ).order_by('-post_count')[:5]
+                
+                # Format top contributors data
+                formatted_contributors = [
+                    {
+                        'author_id': contributor['author_id'],
+                        'username': contributor['author__username'],
+                        'post_count': contributor['post_count']
+                    }
+                    for contributor in top_contributors
+                ]
+            except Exception as e:
+                print(f"Error in top contributors: {str(e)}")
+                print(traceback.format_exc())
+                formatted_contributors = []
+            
+            return Response({
+                'member_growth': {
+                    'daily': list(member_daily),
+                    'monthly': list(member_monthly),
+                },
+                'post_activity': list(post_activity),
+                'engagement_stats': {
+                    'total_posts': post_engagement.get('total_posts', 0) or 0,
+                    'total_upvotes': post_engagement.get('total_upvotes', 0) or 0, 
+                    'total_comments': post_engagement.get('total_comments', 0) or 0,
+                    'avg_upvotes_per_post': round(avg_upvotes_per_post, 2),
+                    'avg_comments_per_post': round(avg_comments_per_post, 2),
+                },
+                'top_contributors': formatted_contributors,
+            })
+        
+        except Exception as e:
+            # Log the full error with traceback
+            print(f"Error in analytics endpoint: {str(e)}")
+            print(traceback.format_exc())
+            return Response(
+                {"detail": f"An error occurred while generating analytics: {str(e)}"},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
             ) 
