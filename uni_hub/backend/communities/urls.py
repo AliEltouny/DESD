@@ -3,11 +3,12 @@ from rest_framework.routers import DefaultRouter
 from rest_framework_nested.routers import NestedDefaultRouter
 
 # Import viewsets directly from views top-level package instead of from sub-modules
-from .views import CommunityViewSet, PostViewSet, CommentViewSet
+from .views import CommunityViewSet, PostViewSet, CommentViewSet, CommunityInvitationViewSet
 
 # Create a router for the community endpoints with trailing slashes turned off
 router = DefaultRouter(trailing_slash=False)
 router.register(r'communities', CommunityViewSet)
+router.register(r'community-invitations', CommunityInvitationViewSet, basename='community-invitations')
 
 # Create a nested router for posts within a community
 community_router = NestedDefaultRouter(router, r'communities', lookup='community')

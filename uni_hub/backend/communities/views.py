@@ -8,12 +8,14 @@ from django.dispatch import receiver
 from .views.community_views import CommunityViewSet
 from .views.post_views import PostViewSet
 from .views.comment_views import CommentViewSet
+from .views.invitation_views import CommunityInvitationViewSet
 
 # Export the viewsets to maintain the same API
 __all__ = [
     'CommunityViewSet',
     'PostViewSet',
     'CommentViewSet',
+    'CommunityInvitationViewSet',
 ]
 
 # The rest of this file is removed to avoid duplication

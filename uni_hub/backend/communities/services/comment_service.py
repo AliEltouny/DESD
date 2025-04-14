@@ -1,5 +1,5 @@
 from django.shortcuts import get_object_or_404
-from django.db.models import Q
+from django.db.models import Q, Prefetch
 from rest_framework.exceptions import PermissionDenied
 
 from ..models import Post, Comment, Membership
@@ -14,6 +14,19 @@ class CommentService:
         Get a filtered queryset of comments based on parameters.
         """
         queryset = Comment.objects.all()
+        
+        # Add select_related for foreign keys
+        queryset = queryset.select_related('post', 'author', 'parent', 'post__community')
+        
+        # Add prefetch_related for reverse relations and many-to-many
+        queryset = queryset.prefetch_related(
+            'upvotes',
+            Prefetch(
+                'replies',
+                queryset=Comment.objects.select_related('author').prefetch_related('upvotes'),
+                to_attr='nested_replies'
+            )
+        )
         
         # Filter by post
         if post_id:

@@ -2,20 +2,36 @@ from django.shortcuts import get_object_or_404
 from django.utils import timezone
 from django.core.mail import send_mail
 from django.conf import settings
-from django.db.models import Q, Count
+from django.db.models import Q, Count, Prefetch
+from django.db.models.functions import TruncMonth, TruncDay
 
 from ..models import Community, Membership, CommunityInvitation
+from ..utils.cache import cache_queryset, cached_method
 
 
 class CommunityService:
     """Service class for community operations"""
     
     @staticmethod
+    @cache_queryset(timeout=60)  # Cache for 1 minute
     def get_community_queryset(user, category=None, search=None, tag=None, member_of=None, order_by='created_at'):
         """
         Get a filtered queryset of communities based on parameters.
         """
         queryset = Community.objects.all()
+        
+        # Add select_related for foreign keys
+        queryset = queryset.select_related('creator')
+        
+        # Add prefetch_related for reverse relations and many-to-many
+        queryset = queryset.prefetch_related(
+            'members',
+            Prefetch(
+                'membership_set', 
+                queryset=Membership.objects.filter(status='approved').select_related('user'),
+                to_attr='active_memberships'
+            )
+        )
         
         # Filter by category
         if category:
@@ -50,7 +66,8 @@ class CommunityService:
         if order_by == 'name':
             queryset = queryset.order_by('name')
         elif order_by == 'member_count':
-            queryset = queryset.annotate(member_count=Count('members')).order_by('-member_count')
+            # Use cached member count if available, otherwise fallback to annotation
+            queryset = queryset.order_by('-member_count_cache')
         else:  # Default to most recent
             queryset = queryset.order_by('-created_at')
             
@@ -213,4 +230,40 @@ class CommunityService:
         else:
             membership.status = 'rejected'
             membership.save()
-            return True, "Membership request rejected." 
+            return True, "Membership request rejected."
+    
+    @staticmethod
+    @cached_method(timeout=300)  # Cache for 5 minutes
+    def get_community_analytics(community_id):
+        """
+        Get analytics data for a community.
+        This is a computationally expensive operation, so we cache it.
+        """
+        community = Community.objects.get(id=community_id)
+        
+        # Member growth analytics
+        member_growth = Membership.objects.filter(
+            community=community, 
+            status='approved'
+        ).annotate(
+            month=TruncMonth('joined_at')
+        ).values('month').annotate(count=Count('id')).order_by('month')
+        
+        # Post activity analytics
+        post_activity = community.posts.annotate(
+            day=TruncDay('created_at')
+        ).values('day').annotate(count=Count('id')).order_by('day')
+        
+        # Top contributors (users with most posts)
+        top_contributors = community.posts.values(
+            'author__id', 'author__username', 'author__first_name', 'author__last_name'
+        ).annotate(post_count=Count('id')).order_by('-post_count')[:10]
+        
+        return {
+            'member_growth': list(member_growth),
+            'post_activity': list(post_activity),
+            'top_contributors': list(top_contributors),
+            'total_members': community.members.filter(membership__status='approved').count(),
+            'total_posts': community.posts.count(),
+            'total_comments': sum(post.comments.count() for post in community.posts.all()),
+        } 

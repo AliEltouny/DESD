@@ -1,8 +1,8 @@
 from django.shortcuts import get_object_or_404
-from django.db.models import Q
+from django.db.models import Q, Prefetch
 from rest_framework.exceptions import PermissionDenied
 
-from ..models import Community, Membership, Post
+from ..models import Community, Membership, Post, Comment
 
 
 class PostService:
@@ -14,6 +14,19 @@ class PostService:
         Get a filtered queryset of posts based on parameters.
         """
         queryset = Post.objects.all()
+        
+        # Add select_related for foreign keys
+        queryset = queryset.select_related('community', 'author')
+        
+        # Add prefetch_related for reverse relations and many-to-many
+        queryset = queryset.prefetch_related(
+            'upvotes',
+            Prefetch(
+                'comments',
+                queryset=Comment.objects.filter(parent=None).select_related('author'),
+                to_attr='top_level_comments'
+            )
+        )
         
         # Filter by community
         if community_slug:
