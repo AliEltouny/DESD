@@ -28,6 +28,7 @@ export default function CommunityDetailPage() {
   const [joinLoading, setJoinLoading] = useState(false);
   const [postType, setPostType] = useState("");
   const [searchQuery, setSearchQuery] = useState("");
+  const [imageError, setImageError] = useState(false);
 
   // Post types for filter
   const postTypes = [
@@ -264,14 +265,14 @@ export default function CommunityDetailPage() {
     );
   }
 
-  // Generate community initials if no image
+  // Get community initials for avatar fallback
   const getCommunityInitials = () => {
+    if (!community?.name) return "";
     return community.name
       .split(" ")
-      .map((word: string) => word[0])
-      .join("")
-      .toUpperCase()
-      .substring(0, 2);
+      .map((word) => word.charAt(0).toUpperCase())
+      .slice(0, 2)
+      .join("");
   };
 
   // Check if the current user is the creator of this community
@@ -408,19 +409,18 @@ export default function CommunityDetailPage() {
             <div className="bg-white rounded-lg shadow-sm overflow-hidden">
               <div className="flex items-center p-6 border-b border-gray-100">
                 <div className="flex-shrink-0 mr-4">
-                  {community.image ? (
+                  {community.image && !imageError ? (
                     <img
-                      src={getMediaUrl(community.image)}
+                      src={(() => {
+                        const imageUrl = getMediaUrl(community.image);
+                        console.log('Community image path:', community.image);
+                        console.log('Processed image URL:', imageUrl);
+                        return imageUrl;
+                      })()}
                       alt={community.name}
                       onError={(e) => {
-                        e.currentTarget.onerror = null;
-                        // Replace with fallback
-                        e.currentTarget.style.display = "none";
-                        e.currentTarget.parentElement!.innerHTML = `
-                          <div class="w-24 h-24 rounded-lg bg-blue-100 flex items-center justify-center">
-                            <span class="text-2xl font-semibold text-blue-600">${getCommunityInitials()}</span>
-                          </div>
-                        `;
+                        console.error('Image failed to load:', e.currentTarget.src);
+                        setImageError(true);
                       }}
                       className="w-24 h-24 rounded-lg object-cover"
                     />

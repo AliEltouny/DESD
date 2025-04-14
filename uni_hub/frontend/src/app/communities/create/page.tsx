@@ -4,6 +4,7 @@ import React, { useState, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/contexts/AuthContext";
 import { createCommunity } from "@/services/communityService";
+import MediaUpload from "@/components/ui/MediaUpload";
 
 export default function CreateCommunityPage() {
   const router = useRouter();
@@ -22,17 +23,13 @@ export default function CreateCommunityPage() {
   // Image state
   const [image, setImage] = useState<File | null>(null);
   const [banner, setBanner] = useState<File | null>(null);
-  const [imagePreview, setImagePreview] = useState<string | null>(null);
-  const [bannerPreview, setBannerPreview] = useState<string | null>(null);
 
   // Form state
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
 
-  // Refs for file inputs
-  const imageInputRef = useRef<HTMLInputElement>(null);
-  const bannerInputRef = useRef<HTMLInputElement>(null);
+  // Ref for the form element
   const formRef = useRef<HTMLFormElement>(null);
 
   // Categories for selection
@@ -47,46 +44,6 @@ export default function CreateCommunityPage() {
     { value: "service", label: "Community Service" },
     { value: "other", label: "Other" },
   ];
-
-  const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) {
-      setImage(file);
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        setImagePreview(reader.result as string);
-      };
-      reader.readAsDataURL(file);
-    }
-  };
-
-  const handleBannerChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) {
-      setBanner(file);
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        setBannerPreview(reader.result as string);
-      };
-      reader.readAsDataURL(file);
-    }
-  };
-
-  const handleImageRemove = () => {
-    setImage(null);
-    setImagePreview(null);
-    if (imageInputRef.current) {
-      imageInputRef.current.value = "";
-    }
-  };
-
-  const handleBannerRemove = () => {
-    setBanner(null);
-    setBannerPreview(null);
-    if (bannerInputRef.current) {
-      bannerInputRef.current.value = "";
-    }
-  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -532,147 +489,32 @@ export default function CreateCommunityPage() {
 
                 {/* Community Logo/Image */}
                 <div className="mb-6">
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Community Logo
-                  </label>
-                  <div className="flex items-start">
-                    <div
-                      className={`w-24 h-24 rounded-lg border-2 ${
-                        imagePreview
-                          ? "border-transparent"
-                          : "border-dashed border-gray-300"
-                      } overflow-hidden mr-4 flex items-center justify-center bg-gray-50`}
-                    >
-                      {imagePreview ? (
-                        <img
-                          src={imagePreview}
-                          alt="Community logo preview"
-                          className="w-full h-full object-cover"
-                        />
-                      ) : (
-                        <svg
-                          className="h-12 w-12 text-gray-300"
-                          fill="none"
-                          viewBox="0 0 24 24"
-                          stroke="currentColor"
-                        >
-                          <path
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                            strokeWidth={1}
-                            d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"
-                          />
-                        </svg>
-                      )}
-                    </div>
-                    <div className="flex-1">
-                      <div className="flex flex-col sm:flex-row">
-                        <input
-                          type="file"
-                          id="image"
-                          name="image"
-                          ref={imageInputRef}
-                          accept="image/*"
-                          onChange={handleImageChange}
-                          className="hidden"
-                        />
-                        <button
-                          type="button"
-                          onClick={() => imageInputRef.current?.click()}
-                          className="px-4 py-2 bg-white border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
-                        >
-                          Choose File
-                        </button>
-                        {imagePreview && (
-                          <button
-                            type="button"
-                            onClick={handleImageRemove}
-                            className="mt-2 sm:mt-0 sm:ml-2 px-4 py-2 bg-white border border-gray-300 rounded-md shadow-sm text-sm font-medium text-red-600 hover:bg-red-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500"
-                          >
-                            Remove
-                          </button>
-                        )}
-                      </div>
-                      <p className="mt-1 text-sm text-gray-500">
-                        Recommended: Square image, at least 300x300 pixels. Max
-                        5MB.
-                      </p>
-                    </div>
-                  </div>
+                  <MediaUpload
+                    id="image"
+                    name="image"
+                    label="Community Logo"
+                    value={image}
+                    onChange={setImage}
+                    previewType="circle"
+                    aspectRatio={1}
+                    description="Recommended: Square image, at least 300x300 pixels. Max 5MB."
+                    error={errors.image}
+                  />
                 </div>
 
                 {/* Community Banner */}
                 <div className="mb-4">
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Community Banner
-                  </label>
-                  <div className="flex flex-col items-start">
-                    <div
-                      className={`w-full h-32 rounded-lg border-2 ${
-                        bannerPreview
-                          ? "border-transparent"
-                          : "border-dashed border-gray-300"
-                      } overflow-hidden mb-4 flex items-center justify-center bg-gray-50`}
-                    >
-                      {bannerPreview ? (
-                        <img
-                          src={bannerPreview}
-                          alt="Community banner preview"
-                          className="w-full h-full object-cover"
-                        />
-                      ) : (
-                        <div className="text-center px-6 py-10">
-                          <svg
-                            className="mx-auto h-12 w-12 text-gray-300"
-                            fill="none"
-                            viewBox="0 0 24 24"
-                            stroke="currentColor"
-                          >
-                            <path
-                              strokeLinecap="round"
-                              strokeLinejoin="round"
-                              strokeWidth={1}
-                              d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"
-                            />
-                          </svg>
-                          <p className="mt-1 text-sm text-gray-500">
-                            Add a banner image to make your community stand out
-                          </p>
-                        </div>
-                      )}
-                    </div>
-                    <div className="flex flex-col sm:flex-row">
-                      <input
-                        type="file"
-                        id="banner"
-                        name="banner"
-                        ref={bannerInputRef}
-                        accept="image/*"
-                        onChange={handleBannerChange}
-                        className="hidden"
-                      />
-                      <button
-                        type="button"
-                        onClick={() => bannerInputRef.current?.click()}
-                        className="px-4 py-2 bg-white border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
-                      >
-                        Choose File
-                      </button>
-                      {bannerPreview && (
-                        <button
-                          type="button"
-                          onClick={handleBannerRemove}
-                          className="mt-2 sm:mt-0 sm:ml-2 px-4 py-2 bg-white border border-gray-300 rounded-md shadow-sm text-sm font-medium text-red-600 hover:bg-red-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500"
-                        >
-                          Remove
-                        </button>
-                      )}
-                    </div>
-                    <p className="mt-1 text-sm text-gray-500">
-                      Recommended: Wide image (3:1 ratio), at least 1200x400
-                      pixels. Max 5MB.
-                    </p>
-                  </div>
+                  <MediaUpload
+                    id="banner"
+                    name="banner"
+                    label="Community Banner"
+                    value={banner}
+                    onChange={setBanner}
+                    previewType="banner"
+                    aspectRatio={3}
+                    description="Recommended: Wide image (3:1 ratio), at least 1200x400 pixels. Max 5MB."
+                    error={errors.banner}
+                  />
                 </div>
               </div>
 

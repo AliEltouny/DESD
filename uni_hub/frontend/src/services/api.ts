@@ -169,14 +169,28 @@ export const testimonialApi = {
 
 // Media utility function
 export const getMediaUrl = (path: string | null): string => {
+  // Log the original path for debugging
+  console.log('getMediaUrl input path:', path);
+  
   // Return a placeholder SVG for missing images
-  if (!path)
+  if (!path) {
+    console.log('getMediaUrl returning placeholder for null path');
     return "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='100' height='100' viewBox='0 0 100 100'%3E%3Ccircle cx='50' cy='50' r='50' fill='%23e5e7eb'/%3E%3Cpath d='M36 40a14 14 0 1 1 28 0 14 14 0 0 1-28 0zm33 25.5c0-7.2-15-11-18.5-11-3.5 0-18.5 3.8-18.5 11V70h37v-4.5z' fill='%23a1a1aa'/%3E%3C/svg%3E";
+  }
 
   const isBrowser = typeof window !== 'undefined';
   
-  // For absolute URLs, just return them as is
+  // For absolute URLs, make sure they're accessible from browser
   if (path.startsWith("http")) {
+    console.log('Processing absolute URL:', path);
+    
+    // In browser environment, replace Docker container hostname with localhost
+    if (isBrowser && path.includes("backend:8000")) {
+      const fixedUrl = path.replace("backend:8000", "localhost:8000");
+      console.log('Fixed URL for browser access:', fixedUrl);
+      return fixedUrl;
+    }
+    
     return path;
   }
 
@@ -191,12 +205,16 @@ export const getMediaUrl = (path: string | null): string => {
 
   // In the browser, use relative URLs that will be handled by the Next.js proxy
   if (isBrowser) {
-    return `/media/${cleanPath}`;
+    const result = `/media/${cleanPath}`;
+    console.log('getMediaUrl (browser) result:', result);
+    return result;
   }
   
   // For server-side rendering, use the full URL
   const MEDIA_BASE_URL = process.env.NEXT_PUBLIC_BACKEND_URL || "http://backend:8000";
-  return `${MEDIA_BASE_URL}/media/${cleanPath}`;
+  const result = `${MEDIA_BASE_URL}/media/${cleanPath}`;
+  console.log('getMediaUrl (server) result:', result);
+  return result;
 };
 
 export default api;
