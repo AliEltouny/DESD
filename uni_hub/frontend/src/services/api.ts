@@ -150,7 +150,17 @@ export const testimonialApi = {
   getTestimonials: async () => {
     try {
       const response = await api.get("/testimonials");
-      return response.data;
+      // Check if response has paginated format with results field
+      if (response.data && response.data.results) {
+        return response.data.results;
+      }
+      // For backward compatibility, if it's an array, return it directly
+      if (Array.isArray(response.data)) {
+        return response.data;
+      }
+      // If neither, return empty array
+      console.warn("Unexpected testimonials response format:", response.data);
+      return [];
     } catch (err) {
       console.error("Error fetching testimonials:", err);
       return []; // Return empty array instead of throwing

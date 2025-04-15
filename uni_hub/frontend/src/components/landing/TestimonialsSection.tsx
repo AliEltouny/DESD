@@ -58,16 +58,26 @@ const TestimonialsSection = () => {
         
         // Attempt to fetch from API
         const response = await testimonialApi.getTestimonials();
+        console.log("Testimonials API response:", response);
         
         if (response && response.length > 0) {
           // Process testimonials to ensure proper image URLs
           const processedTestimonials = response.map(
-            (testimonial: any) => ({
-              ...testimonial,
-              image: testimonial.image_url || getMediaUrl(testimonial.image),
-            })
+            (testimonial: any) => {
+              // Ensure all image URLs use localhost instead of backend container name
+              let imageUrl = testimonial.image_url || testimonial.image;
+              if (imageUrl && imageUrl.includes('backend:8000')) {
+                imageUrl = imageUrl.replace('backend:8000', 'localhost:8000');
+              }
+              
+              return {
+                ...testimonial,
+                image: imageUrl || getMediaUrl(testimonial.image),
+              };
+            }
           );
 
+          console.log("Processed testimonials:", processedTestimonials);
           setTestimonials(processedTestimonials);
           setUseFallback(false);
           console.log("Using real testimonials from backend");
@@ -185,7 +195,7 @@ const TestimonialsSection = () => {
                         </div>
                       </div>
                       <p className="text-lg text-gray-700 italic">
-                        "{testimonial.content}"
+                        "{testimonial.content || "Uni Hub has been a great platform for connecting with my fellow students!"}"
                       </p>
                       <div className="mt-6 flex items-center">
                         <div className="flex">
