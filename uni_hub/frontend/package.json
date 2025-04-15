@@ -10,6 +10,13 @@
   },
   "dependencies": {
     "@tanstack/react-query": "^5.69.2",
+    "@tiptap/extension-image": "^2.11.7",
+    "@tiptap/extension-link": "^2.11.7",
+    "@tiptap/extension-placeholder": "^2.11.7",
+    "@tiptap/extension-text-align": "^2.11.7",
+    "@tiptap/extension-underline": "^2.11.7",
+    "@tiptap/react": "^2.11.7",
+    "@tiptap/starter-kit": "^2.11.7",
     "axios": "^1.8.4",
     "date-fns": "^3.4.0",
     "framer-motion": "^11.1.5",

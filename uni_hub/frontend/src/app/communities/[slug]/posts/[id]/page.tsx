@@ -345,13 +345,17 @@ export default function PostDetailPage() {
               <h1 className="text-2xl font-semibold text-gray-900 mb-4">
                 {post.title}
               </h1>
-              <div className="prose max-w-none mb-6">
-                {post.content.split("\n").map((paragraph, index) => (
-                  <p key={index} className="mb-4">
-                    {paragraph}
-                  </p>
-                ))}
-              </div>
+              <div 
+                className="prose prose-sm max-w-none mb-6 text-gray-900" 
+                dangerouslySetInnerHTML={{ __html: post.content }}
+                style={{
+                  color: '#111827',
+                  '--tw-prose-body': '#111827',
+                  '--tw-prose-headings': '#111827', 
+                  '--tw-prose-lead': '#111827',
+                  '--tw-prose-links': '#2563eb'
+                }}
+              />
 
               {/* Post image if available */}
               {post.image && (

@@ -11,15 +11,15 @@ interface InputProps extends InputHTMLAttributes<HTMLInputElement> {
 
 const Input = forwardRef<HTMLInputElement, InputProps>(
   ({ label, error, className = "", fullWidth = true, ...props }, ref) => {
-    const baseClasses = `w-full px-4 py-2 border rounded-md text-gray-800 bg-white ${
+    const baseClasses = `w-full px-4 py-2 border rounded-md text-gray-900 bg-white ${
       fullWidth ? "w-full" : ""
     } ${className} ${
       error
-        ? "border-red-300 text-red-900 placeholder-red-300"
+        ? "border-red-300 placeholder-red-300"
         : props.value && props.required
         ? "border-green-300"
         : "border-gray-300"
-    } focus:outline-none focus:ring-0 focus:shadow-none`;
+    } focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500`;
 
     return (
       <div className={fullWidth ? "w-full" : ""}>

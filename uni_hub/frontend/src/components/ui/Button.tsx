@@ -22,28 +22,34 @@ const Button: React.FC<ButtonProps> = ({
     inline-flex justify-center items-center px-4 py-2 border 
     rounded-md shadow-sm text-sm font-medium text-white 
     bg-blue-600 hover:bg-blue-700 
-    outline-none outline-0 outline-transparent
-    focus:outline-none focus:ring-0 focus:ring-offset-0 focus:shadow-none focus:border-transparent
-    active:outline-none active:ring-0 active:shadow-none active:border-transparent
-    disabled:opacity-50 disabled:cursor-not-allowed
-    transition-colors duration-300
+    outline-none border-transparent
+    focus:outline-none focus:ring-0
+    active:bg-blue-800 active:transform-none
+    disabled:opacity-70 disabled:cursor-not-allowed
     ${fullWidth ? "w-full" : ""}
     ${className}
   `;
 
+  // Fixed height button to prevent size changes
   return (
     <button
       className={baseClasses}
       disabled={disabled || isLoading}
       style={{ 
-        outline: 'none', 
-        boxShadow: 'none',
-        WebkitTapHighlightColor: 'transparent'
+        WebkitTapHighlightColor: 'transparent',
+        transform: 'none',
+        height: '38px',
+        minWidth: '80px'
       }}
       {...props}
     >
-      {isLoading && <LoadingSpinner className="mr-2 h-4 w-4" />}
-      {children}
+      <div className="flex items-center justify-center w-full">
+        {isLoading ? (
+          <LoadingSpinner className="h-4 w-4" />
+        ) : (
+          <span className="inline-block">{children}</span>
+        )}
+      </div>
     </button>
   );
 };

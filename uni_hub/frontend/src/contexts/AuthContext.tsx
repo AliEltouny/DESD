@@ -63,6 +63,24 @@ const getCookie = (name: string): string | undefined => {
   return undefined;
 };
 
+// Helper function to set cookie with expiration
+const setCookie = (name: string, value: string, days?: number) => {
+  let expires = "";
+  
+  if (days) {
+    const date = new Date();
+    date.setTime(date.getTime() + days * 24 * 60 * 60 * 1000);
+    expires = `; expires=${date.toUTCString()}`;
+  }
+  
+  document.cookie = `${name}=${value}${expires}; path=/; SameSite=Strict`;
+};
+
+// Helper function to delete cookie
+const deleteCookie = (name: string) => {
+  document.cookie = `${name}=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT; SameSite=Strict`;
+};
+
 // API client
 const api = axios.create({
   baseURL: "/api",
@@ -129,114 +147,212 @@ api.interceptors.response.use(
 export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [isInitialized, setIsInitialized] = useState(false);
   const router = useRouter();
+
+  // Function to handle token refresh
+  const refreshAuthToken = async (): Promise<string | null> => {
+    try {
+      const refreshToken = getCookie("refreshToken");
+      
+      if (!refreshToken) {
+        throw new Error("No refresh token available");
+      }
+      
+      const response = await axios.post("/api/token/refresh/", {
+        refresh: refreshToken,
+      });
+      
+      const { access } = response.data;
+      
+      // Store the new access token
+      const rememberMe = localStorage.getItem("user") !== null;
+      const expDays = rememberMe ? 30 : undefined; // 30 days if remember me is enabled
+      setCookie("accessToken", access, expDays);
+      
+      // Update API headers
+      api.defaults.headers.common.Authorization = `Bearer ${access}`;
+      
+      console.log("Token refreshed successfully");
+      return access;
+    } catch (error) {
+      console.error("Failed to refresh token:", error);
+      // Clear auth data on refresh failure
+      clearAuthData();
+      return null;
+    }
+  };
+  
+  // Function to clear all auth data
+  const clearAuthData = () => {
+    deleteCookie("accessToken");
+    deleteCookie("refreshToken");
+    localStorage.removeItem("user");
+    sessionStorage.removeItem("user");
+    delete api.defaults.headers.common.Authorization;
+  };
 
   useEffect(() => {
     // Check if user is authenticated on initial load
     const checkAuth = async () => {
-      const accessToken = getCookie("accessToken");
-      const userJSONFromLocal = localStorage.getItem("user");
-      const userJSONFromSession = sessionStorage.getItem("user");
-      const userJSON = userJSONFromLocal || userJSONFromSession;
+      try {
+        const accessToken = getCookie("accessToken");
+        const userJSONFromLocal = localStorage.getItem("user");
+        const userJSONFromSession = sessionStorage.getItem("user");
+        const userJSON = userJSONFromLocal || userJSONFromSession;
 
-      console.log("Initial auth check - token present:", !!accessToken);
-      console.log("Initial auth check - user data present:", !!userJSON);
-      console.log("Initial auth check - remember me enabled:", !!userJSONFromLocal);
+        console.log("Initial auth check - token present:", !!accessToken);
+        console.log("Initial auth check - user data present:", !!userJSON);
+        console.log("Initial auth check - remember me enabled:", !!userJSONFromLocal);
 
-      if (accessToken) {
-        try {
-          // Verify token is valid (not expired)
-          const decodedToken: any = jwtDecode(accessToken);
-          const currentTime = Date.now() / 1000;
+        if (accessToken) {
+          try {
+            // Verify token is valid (not expired)
+            const decodedToken: any = jwtDecode(accessToken);
+            const currentTime = Date.now() / 1000;
 
-          console.log(
-            "Token expiration:",
-            new Date(decodedToken.exp * 1000).toISOString()
-          );
-          console.log("Current time:", new Date().toISOString());
+            console.log(
+              "Token expiration:",
+              new Date(decodedToken.exp * 1000).toISOString()
+            );
+            console.log("Current time:", new Date().toISOString());
 
-          if (decodedToken.exp < currentTime) {
-            console.log("Token expired, attempting refresh");
-            const refreshToken = getCookie("refreshToken");
-            
-            if (refreshToken) {
-              try {
-                // Try to refresh the token
-                const response = await axios.post("/api/token/refresh/", {
-                  refresh: refreshToken,
-                });
-                
-                const { access } = response.data;
-                document.cookie = `accessToken=${access}; path=/; SameSite=Strict`;
-                
-                // Update API headers with new token
-                api.defaults.headers.common.Authorization = `Bearer ${access}`;
-                
-                // Re-check user data
-                if (userJSON) {
-                  const userData = JSON.parse(userJSON);
-                  setUser(userData);
-                  console.log("User restored after token refresh");
-                } else {
-                  // If no user data, fetch it
-                  console.log("Fetching user profile after token refresh...");
-                  const profileResponse = await api.get("/profile");
-                  const userData = profileResponse.data;
-                  
-                  // Store in appropriate storage based on if we originally had localStorage data
-                  if (userJSONFromLocal) {
-                    localStorage.setItem("user", JSON.stringify(userData));
-                  } else {
-                    sessionStorage.setItem("user", JSON.stringify(userData));
-                  }
-                  
-                  setUser(userData);
-                }
-              } catch (refreshError) {
-                console.error("Error refreshing token:", refreshError);
-                throw new Error("Token refresh failed");
-              }
-            } else {
-              throw new Error("No refresh token available");
-            }
-          } else if (userJSON) {
-            // Token is valid, set user from storage
-            const userData = JSON.parse(userJSON);
-            setUser(userData);
-            console.log("User set from storage:", userData);
-            api.defaults.headers.common.Authorization = `Bearer ${accessToken}`;
-          } else {
-            // Token valid but no user data, fetch profile
-            try {
-              console.log("Token valid, fetching user profile...");
-              const profileResponse = await api.get("/profile");
-              const userData = profileResponse.data;
+            if (decodedToken.exp < currentTime) {
+              console.log("Token expired, attempting refresh");
+              // Token expired, try refreshing
+              const newToken = await refreshAuthToken();
               
-              // Default to session storage if we don't know the preference
-              sessionStorage.setItem("user", JSON.stringify(userData));
+              if (!newToken) {
+                throw new Error("Failed to refresh expired token");
+              }
+              
+              // Successfully refreshed token
+              if (userJSON) {
+                const userData = JSON.parse(userJSON);
+                setUser(userData);
+                console.log("User restored after token refresh");
+              } else {
+                await fetchAndSetUserProfile(userJSONFromLocal !== null);
+              }
+            } else if (userJSON) {
+              // Token is valid, set user from storage
+              const userData = JSON.parse(userJSON);
               setUser(userData);
-            } catch (profileError) {
-              console.error("Failed to fetch profile:", profileError);
-              throw new Error("Failed to get user data");
+              console.log("User set from storage:", userData);
+              api.defaults.headers.common.Authorization = `Bearer ${accessToken}`;
+            } else {
+              // Token valid but no user data, fetch profile
+              await fetchAndSetUserProfile(userJSONFromLocal !== null);
             }
+          } catch (error) {
+            console.error("Auth check error:", error);
+            // Clear invalid auth data
+            clearAuthData();
           }
-        } catch (error) {
-          console.error("Auth check error:", error);
-          // Clear invalid auth data
-          document.cookie =
-            "accessToken=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT";
-          document.cookie =
-            "refreshToken=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT";
-          localStorage.removeItem("user");
-          sessionStorage.removeItem("user");
+        } else if (userJSON) {
+          // We have user data but no token - try to refresh token
+          console.log("User data found but no token, attempting refresh");
+          const refreshToken = getCookie("refreshToken");
+          
+          if (refreshToken) {
+            try {
+              const newToken = await refreshAuthToken();
+              
+              if (newToken) {
+                const userData = JSON.parse(userJSON);
+                setUser(userData);
+                console.log("Session restored via refresh token");
+              } else {
+                throw new Error("Failed to refresh token");
+              }
+            } catch (refreshError) {
+              console.error("Token refresh failed:", refreshError);
+              clearAuthData();
+            }
+          } else {
+            // No refresh token, clear the orphaned user data
+            console.log("No refresh token available, clearing user data");
+            clearAuthData();
+          }
         }
+      } catch (error) {
+        console.error("Fatal auth check error:", error);
+        // Clear all auth data on fatal error
+        clearAuthData();
+      } finally {
+        // Always finish initialization, even if there's an error
+        setIsLoading(false);
+        setIsInitialized(true);
       }
-
-      setIsLoading(false);
     };
 
+    // Add a shorter timeout (2 seconds is reasonable) to ensure initialization 
+    // completes even if there are network issues
+    const initTimeout = setTimeout(() => {
+      if (!isInitialized) {
+        console.warn("Auth initialization timed out, completing anyway");
+        setIsLoading(false);
+        setIsInitialized(true);
+      }
+    }, 2000);
+
     checkAuth();
+    
+    // Clean up timeout on unmount
+    return () => {
+      clearTimeout(initTimeout);
+    };
   }, []);
+  
+  // Setup token refresh interval in a separate effect that runs after initialization
+  useEffect(() => {
+    // Only setup refresh interval when initialized and authenticated
+    if (!isInitialized || !user) return;
+    
+    console.log("Setting up token refresh interval");
+    const tokenRefreshInterval = setInterval(async () => {
+      const accessToken = getCookie("accessToken");
+      if (accessToken) {
+        try {
+          const decodedToken: any = jwtDecode(accessToken);
+          const currentTime = Date.now() / 1000;
+          
+          // Refresh token when it's 5 minutes from expiring
+          if (decodedToken.exp - currentTime < 300) {
+            console.log("Token expiring soon, refreshing");
+            await refreshAuthToken();
+          }
+        } catch (error) {
+          console.error("Error in token refresh interval:", error);
+        }
+      }
+    }, 60000); // Check every minute
+    
+    return () => {
+      clearInterval(tokenRefreshInterval);
+    };
+  }, [isInitialized, user]);
+
+  // Helper function to fetch user profile and set state
+  const fetchAndSetUserProfile = async (rememberMe: boolean) => {
+    try {
+      console.log("Fetching user profile...");
+      const profileResponse = await api.get("/profile");
+      const userData = profileResponse.data;
+      
+      if (rememberMe) {
+        localStorage.setItem("user", JSON.stringify(userData));
+      } else {
+        sessionStorage.setItem("user", JSON.stringify(userData));
+      }
+      
+      setUser(userData);
+      return userData;
+    } catch (profileError) {
+      console.error("Failed to fetch profile:", profileError);
+      throw new Error("Failed to get user data");
+    }
+  };
 
   const login = async (
     email: string,
@@ -252,17 +368,20 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       console.log("Remember me enabled:", rememberMe);
       
       // Set tokens in cookies with appropriate expiration
-      const cookieOptions = rememberMe
-        ? "; path=/; SameSite=Strict; max-age=2592000" // 30 days
-        : "; path=/; SameSite=Strict";
-
-      document.cookie = `accessToken=${access}${cookieOptions}`;
-      document.cookie = `refreshToken=${refresh}${cookieOptions}`;
+      if (rememberMe) {
+        setCookie("accessToken", access, 30); // 30 days
+        setCookie("refreshToken", refresh, 90); // 90 days
+      } else {
+        setCookie("accessToken", access); // Session cookie
+        setCookie("refreshToken", refresh); // Session cookie
+      }
 
       // Set user data
       if (rememberMe) {
         // If remember me is enabled, store user data in localStorage
         localStorage.setItem("user", JSON.stringify(userData));
+        // Clear sessionStorage in case it was set previously
+        sessionStorage.removeItem("user");
       } else {
         // If remember me is not enabled, store user data in sessionStorage (cleared when browser is closed)
         sessionStorage.setItem("user", JSON.stringify(userData));
@@ -293,19 +412,9 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   };
 
   const logout = () => {
-    // Remove tokens from cookies
-    document.cookie =
-      "accessToken=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT";
-    document.cookie =
-      "refreshToken=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT";
-    
-    // Clear user data from both storages
-    localStorage.removeItem("user");
-    sessionStorage.removeItem("user");
-
+    // Clear all auth data
+    clearAuthData();
     setUser(null);
-    delete api.defaults.headers.common.Authorization;
-
     router.push("/login");
   };
 
@@ -405,6 +514,18 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     signup,
     verifyOtp,
   };
+
+  // Only render children when authentication is initialized
+  if (!isInitialized) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-white">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
+          <p className="text-gray-600">Loading...</p>
+        </div>
+      </div>
+    );
+  }
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 };

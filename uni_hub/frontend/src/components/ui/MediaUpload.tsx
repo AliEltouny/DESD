@@ -14,8 +14,9 @@ interface MediaUploadProps {
   previewType?: 'square' | 'circle' | 'banner' | 'avatar';
   description?: string;
   error?: string;
-  allowCrop?: boolean;
   aspectRatio?: number;
+  required?: boolean;
+  maxSize?: number; // in MB
 }
 
 export default function MediaUpload({
@@ -29,19 +30,22 @@ export default function MediaUpload({
   previewType = 'square',
   description,
   error,
-  allowCrop = true,
   aspectRatio,
+  required = false,
+  maxSize = 5, // Default 5MB
 }: MediaUploadProps) {
   const [preview, setPreview] = useState<string | null>(null);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [showCropper, setShowCropper] = useState(false);
   const [fileType, setFileType] = useState<'image' | 'document' | 'video' | 'audio' | 'other'>('other');
+  const [sizeError, setSizeError] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Generate preview when file changes
   useEffect(() => {
     if (!value) {
       setPreview(null);
+      setSizeError(null);
       return;
     }
 
@@ -69,23 +73,36 @@ export default function MediaUpload({
     }
   }, [value]);
 
+  const checkFileSize = (file: File): boolean => {
+    const fileSizeMB = file.size / (1024 * 1024);
+    if (fileSizeMB > maxSize) {
+      setSizeError(`File size exceeds the maximum allowed (${maxSize}MB)`);
+      return false;
+    }
+    setSizeError(null);
+    return true;
+  };
+
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
       const file = e.target.files[0];
-      // Check if this is an image and cropping is enabled
-      if (file.type.startsWith('image/') && allowCrop) {
-        setSelectedFile(file);
+      
+      // Check file size
+      if (!checkFileSize(file)) {
+        return;
+      }
+
+      // For all file types, just update the value and generate preview if it's an image
+      onChange(file);
+      setSelectedFile(file);
+      
+      // Generate preview for images
+      if (file.type.startsWith('image/')) {
         const reader = new FileReader();
         reader.onloadend = () => {
-          // Open cropper with the image
-          setShowCropper(true);
           setPreview(reader.result as string);
         };
         reader.readAsDataURL(file);
-      } else {
-        // For non-image files or when cropping is disabled, just update the value
-        onChange(file);
-        setSelectedFile(file);
       }
     }
   };
@@ -94,6 +111,7 @@ export default function MediaUpload({
     onChange(null);
     setSelectedFile(null);
     setPreview(null);
+    setSizeError(null);
     if (fileInputRef.current) {
       fileInputRef.current.value = '';
     }
@@ -128,7 +146,7 @@ export default function MediaUpload({
       case 'avatar':
         return 'w-32 h-32 rounded-full overflow-hidden';
       case 'banner':
-        return 'w-full h-32 rounded-lg overflow-hidden';
+        return 'w-full h-32 md:h-40 rounded-lg overflow-hidden';
       case 'square':
       default:
         return 'w-24 h-24 rounded-lg overflow-hidden';
@@ -235,68 +253,91 @@ export default function MediaUpload({
       {label && (
         <label htmlFor={id} className="block text-sm font-medium text-gray-700">
           {label}
+          {required && <span className="text-red-500 ml-1">*</span>}
         </label>
       )}
 
-      <div className="flex items-start">
+      <div className="flex flex-col md:flex-row md:items-start gap-4">
         <div 
           className={`${getPreviewContainerClasses()} border-2 ${
             value ? "border-transparent" : "border-dashed border-gray-300"
-          } mr-4 flex items-center justify-center bg-gray-50`}
+          } flex items-center justify-center bg-gray-50`}
         >
           {renderPreview()}
         </div>
 
         <div className="flex-1">
-          <div className="flex flex-col sm:flex-row">
-            <input
-              type="file"
-              id={id}
-              name={name}
-              ref={fileInputRef}
-              accept={accept}
-              onChange={handleFileChange}
-              onBlur={onBlur}
-              className="hidden"
-            />
-            <button
-              type="button"
-              onClick={() => fileInputRef.current?.click()}
-              className="px-4 py-2 bg-white border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
-            >
-              Choose File
-            </button>
-            {value && (
+          <div className="flex flex-col space-y-3">
+            <div className="flex flex-wrap gap-2">
+              <input
+                type="file"
+                id={id}
+                name={name}
+                ref={fileInputRef}
+                accept={accept}
+                onChange={handleFileChange}
+                onBlur={onBlur}
+                className="hidden"
+              />
               <button
                 type="button"
-                onClick={handleRemove}
-                className="mt-2 sm:mt-0 sm:ml-2 px-4 py-2 bg-white border border-gray-300 rounded-md shadow-sm text-sm font-medium text-red-600 hover:bg-red-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500"
+                onClick={() => fileInputRef.current?.click()}
+                className="px-4 py-2 bg-white border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
               >
-                Remove
+                Choose File
               </button>
+              {value && (
+                <button
+                  type="button"
+                  onClick={handleRemove}
+                  className="px-4 py-2 bg-white border border-gray-300 rounded-md shadow-sm text-sm font-medium text-red-600 hover:bg-red-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500"
+                >
+                  Remove
+                </button>
+              )}
+              {value && fileType === 'image' && !showCropper && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowCropper(true);
+                  }}
+                  className="px-4 py-2 bg-white border border-gray-300 rounded-md shadow-sm text-sm font-medium text-blue-600 hover:bg-blue-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+                >
+                  Edit/Crop
+                </button>
+              )}
+            </div>
+            
+            {description && (
+              <p className="text-sm text-gray-500">{description}</p>
+            )}
+            
+            {(error || sizeError) && (
+              <div className="flex items-start">
+                <svg
+                  className="h-5 w-5 text-red-500 mr-1 mt-0.5 flex-shrink-0"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth="2"
+                    d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"
+                  />
+                </svg>
+                <p className="text-sm text-red-600">{sizeError || error}</p>
+              </div>
+            )}
+            
+            {value && (
+              <div className="text-sm text-gray-500">
+                <p>File: {value.name}</p>
+                <p>Size: {(value.size / (1024 * 1024)).toFixed(2)} MB</p>
+              </div>
             )}
           </div>
-          {description && (
-            <p className="mt-1 text-sm text-gray-500">{description}</p>
-          )}
-          {error && (
-            <div className="mt-2 flex items-start">
-              <svg
-                className="h-5 w-5 text-red-500 mr-1 mt-0.5 flex-shrink-0"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth="2"
-                  d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"
-                />
-              </svg>
-              <p className="text-sm text-red-600">{error}</p>
-            </div>
-          )}
         </div>
       </div>
 

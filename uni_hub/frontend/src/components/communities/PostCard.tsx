@@ -194,7 +194,18 @@ const PostCard: React.FC<PostCardProps> = ({
         {/* Post title and content */}
         <div className="mt-4">
           <h3 className="text-lg font-medium text-gray-900">{post.title}</h3>
-          <div className="mt-2 text-gray-600 line-clamp-3">{post.content}</div>
+          <div 
+            className="mt-2 text-gray-900 line-clamp-3 prose prose-sm max-w-none"
+            dangerouslySetInnerHTML={{ 
+              __html: post.content.length > 200 
+                ? post.content.substring(0, 200) + '...' 
+                : post.content 
+            }}
+            style={{
+              color: '#111827',
+              '--tw-prose-body': '#111827'
+            }}
+          />
         </div>
 
         {/* Post image if available */}

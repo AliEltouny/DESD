@@ -4,12 +4,14 @@ import React, { useState, useEffect } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { useAuth } from "@/contexts/AuthContext";
 import Link from "next/link";
-import {
-  getCommunity,
-  createPost,
-  Community,
-} from "@/services/communityService";
+import { getCommunity, Community } from "@/services/communityService";
 import DashboardLayout from "@/components/layouts/DashboardLayout";
+import Button from "@/components/ui/Button";
+import Input from "@/components/ui/Input";
+import Select from "@/components/ui/Select";
+import CustomSelect from "@/components/ui/CustomSelect";
+import FileUpload from "@/components/ui/FileUpload";
+import RichTextEditor from "@/components/ui/RichTextEditor";
 
 export default function CreatePostPage() {
   const { slug } = useParams();
@@ -37,13 +39,33 @@ export default function CreatePostPage() {
     postType?: string;
   }>({});
 
-  // Post types
+  // Post types with icons
   const postTypes = [
-    { value: "discussion", label: "Discussion" },
-    { value: "question", label: "Question" },
-    { value: "event", label: "Event" },
-    { value: "announcement", label: "Announcement" },
-    { value: "resource", label: "Resource" },
+    { value: "discussion", label: "Discussion", icon: (
+      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+      </svg>
+    ) },
+    { value: "question", label: "Question", icon: (
+      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+      </svg>
+    ) },
+    { value: "event", label: "Event", icon: (
+      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+      </svg>
+    ) },
+    { value: "announcement", label: "Announcement", icon: (
+      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5.882V19.24a1.76 1.76 0 01-3.417.592l-2.147-6.15M18 13a3 3 0 100-6M5.436 13.683A4.001 4.001 0 017 6h1.832c4.1 0 7.625-1.234 9.168-3v14c-1.543-1.766-5.067-3-9.168-3H7a3.988 3.988 0 01-1.564-.317z" />
+      </svg>
+    ) },
+    { value: "resource", label: "Resource", icon: (
+      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
+      </svg>
+    ) },
   ];
 
   useEffect(() => {
@@ -67,51 +89,12 @@ export default function CreatePostPage() {
           return;
         }
 
-        // Try to get cached community data first
-        let isCreatorFromCache = false;
-        try {
-          const storedUserData = localStorage.getItem('user');
-          const storedCommunityKey = `community_${slug}`;
-          const storedCommunityData = localStorage.getItem(storedCommunityKey);
-          
-          if (storedUserData && storedCommunityData) {
-            const userData = JSON.parse(storedUserData);
-            const communityData = JSON.parse(storedCommunityData);
-            
-            if (communityData.creator?.id === userData.id) {
-              isCreatorFromCache = true;
-            }
-          }
-        } catch (err) {
-          console.error("Error checking cached creator status:", err);
-        }
-
         // Fetch community details
         const communityData = await getCommunity(slug as string);
-        
-        // Store community data in localStorage for quicker access on hard refresh
-        try {
-          localStorage.setItem(`community_${slug}`, JSON.stringify(communityData));
-        } catch (err) {
-          console.error("Error storing community data:", err);
-        }
-        
         setCommunity(communityData);
 
-        // Check if user is the creator of the community
-        const isCreator = isCreatorFromCache || communityData.creator?.id === user?.id;
-        
         // Check if user is a member of the community or the creator
-        const isMember = communityData.is_member || isCreator;
-        
-        // Always treat creator as a member
-        if (isCreator) {
-          communityData.is_member = true;
-          communityData.membership_status = "approved";
-          communityData.membership_role = "admin";
-          // Update the community state with these changes
-          setCommunity({...communityData});
-        }
+        const isMember = communityData.is_member || communityData.creator?.id === user?.id;
         
         if (!isMember) {
           setError(
@@ -129,7 +112,7 @@ export default function CreatePostPage() {
     if (slug) {
       fetchCommunity();
     }
-  }, [slug, isAuthenticated, router]);
+  }, [slug, isAuthenticated, router, user]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -150,7 +133,9 @@ export default function CreatePostPage() {
       errors.title = "Title is required";
     }
     
-    if (!content.trim()) {
+    // Check if content only contains empty paragraph tags or is empty
+    const contentWithoutTags = content.replace(/<[^>]*>/g, '').trim();
+    if (!contentWithoutTags) {
       errors.content = "Content is required";
     }
     
@@ -168,9 +153,6 @@ export default function CreatePostPage() {
     // Reset any previous errors
     setFormErrors({});
     
-    // Double-check if user is creator
-    const isCreator = community?.creator?.id === user?.id;
-    
     try {
       setSubmitting(true);
       setError(null);
@@ -179,45 +161,74 @@ export default function CreatePostPage() {
         throw new Error("Community data is missing");
       }
       
-      // Debug log what we're about to send
-      console.log("post_type:", postType);
+      // Debug values
+      console.log("SUBMISSION VALUES:");
+      console.log(`Title: "${title}"`);
+      console.log(`Content: "${content}"`);
+      console.log(`Post Type: "${postType}"`);
       
-      // Try a different approach - use a direct JSON object instead of FormData
-      const postData = {
-        title: title,
-        content: content,
-        post_type: postType
-      };
+      // Create form data for submission with files
+      const formData = new FormData();
+      formData.append('title', title);
       
-      // Add optional fields only if they exist and have values
-      if (postType === "event") {
-        if (eventDate) {
-          postData["event_date"] = eventDate;
-        }
-        if (eventLocation) {
-          postData["event_location"] = eventLocation;
-        }
+      // Process the content to ensure it's treated as HTML
+      const processedContent = content.startsWith('<p>') ? content : `<p>${content}</p>`;
+      formData.append('content', processedContent);
+      
+      formData.append('post_type', postType);
+      
+      // Add optional fields
+      if (postType === 'event') {
+        if (eventDate) formData.append('event_date', eventDate);
+        if (eventLocation) formData.append('event_location', eventLocation);
       }
       
-      console.log("Attempting to create post for community:", slug);
-      console.log("Post data being sent:", postData);
+      // Add file attachments if present
+      if (image) formData.append('image', image);
+      if (file) formData.append('file', file);
       
-      // Import directly from the API to bypass any wrapper issues
-      const { postApi } = await import("@/services/api/postApi");
+      // Show formdata contents for debugging
+      console.log("FormData contents:");
+      for (const pair of formData.entries()) {
+        console.log(`${pair[0]}: ${pair[1]}`);
+      }
       
-      try {
-        // Use the API directly
-        const response = await postApi.createPost(slug as string, postData);
-        console.log("Post creation successful:", response);
-        // Redirect to community page on success
-        router.push(`/communities/${slug}`);
-      } catch (postError: any) {
-        console.error("Post creation error details:", postError?.response?.data || postError);
-        
-        // Extract validation errors from the response
-        const validationErrors = postError?.response?.data || {};
-        if (postError?.response?.status === 400 && typeof validationErrors === "object") {
-          // Map backend validation errors to form errors
+      // Get CSRF token if needed
+      const csrfToken = document.cookie
+        .split('; ')
+        .find(row => row.startsWith('csrftoken='))
+        ?.split('=')[1];
+      
+      // Get auth token from cookies
+      const authToken = document.cookie
+        .split('; ')
+        .find(row => row.startsWith('accessToken='))
+        ?.split('=')[1];
+      
+      console.log("Submitting post with token:", authToken ? `${authToken.substring(0, 10)}...` : "No token");
+      
+      // Use direct URL to backend with NO trailing slash
+      const backendUrl = 'http://localhost:8000/api';
+      console.log(`Posting to: ${backendUrl}/communities/${slug}/posts`);
+      
+      const response = await fetch(`${backendUrl}/communities/${slug}/posts`, {
+        method: 'POST',
+        headers: {
+          'X-CSRFToken': csrfToken || '',
+          'Authorization': authToken ? `Bearer ${authToken}` : '',
+        },
+        body: formData,
+        credentials: 'include',
+        mode: 'cors'
+      });
+      
+      if (!response.ok) {
+        // Handle specific HTTP errors
+        if (response.status === 400) {
+          const validationErrors = await response.json();
+          console.error("Validation errors:", validationErrors);
+          
+          // Format error messages
           const newFormErrors: any = {};
           
           if (validationErrors.title) {
@@ -236,6 +247,9 @@ export default function CreatePostPage() {
             newFormErrors.postType = Array.isArray(validationErrors.post_type) 
               ? validationErrors.post_type[0] 
               : validationErrors.post_type;
+            
+            // Special debug info for post_type issues
+            console.error("Post type error details:", validationErrors.post_type);
           }
           
           if (Object.keys(newFormErrors).length > 0) {
@@ -244,125 +258,116 @@ export default function CreatePostPage() {
             setSubmitting(false);
             return;
           }
+        } else if (response.status === 403) {
+          // Handle permission errors
+          throw new Error("You don't have permission to create posts in this community.");
+        } else {
+          throw new Error(`Server error: ${response.status}`);
         }
-        
-        // If we get a 403 permission error and user is creator, try joining the community first
-        if (isCreator && postError?.response?.status === 403) {
-          console.log("Creator received permission error, attempting community join first");
-          
-          // Import the join function
-          const { joinCommunity } = await import("@/services/communityService");
-          
-          try {
-            // Try joining the community first
-            await joinCommunity(slug as string);
-            console.log("Joined community, trying post creation again");
-            
-            // Try creating the post again
-            const retryResponse = await postApi.createPost(slug as string, postData);
-            console.log("Retry post creation successful:", retryResponse);
-            
-            // Redirect to community page on success
-            router.push(`/communities/${slug}`);
-            return;
-          } catch (joinError) {
-            console.error("Join attempt failed:", joinError);
-            throw new Error("Failed to join community as creator");
-          }
-        }
-        
-        // If we reached here, re-throw the original error
-        throw postError;
       }
+      
+      // Success case
+      const result = await response.json();
+      console.log("Post created successfully:", result);
+      router.push(`/communities/${slug}`);
+      
     } catch (err) {
       console.error("Failed to create post:", err);
-      setError("Failed to create post. Please try again.");
+      setError(err instanceof Error ? err.message : "Failed to create post. Please try again.");
     } finally {
       setSubmitting(false);
     }
   };
 
+  // Loading state
   if (loading) {
     return (
-      <div className="bg-gray-50 min-h-screen py-8">
-        <div className="max-w-3xl mx-auto px-4">
-          <div className="animate-pulse">
-            <div className="h-8 bg-gray-200 rounded w-3/4 mb-6"></div>
-            <div className="h-4 bg-gray-200 rounded w-1/4 mb-4"></div>
-            <div className="h-48 bg-gray-200 rounded mb-6"></div>
+      <DashboardLayout>
+        <div className="bg-gray-50 min-h-screen py-8">
+          <div className="max-w-3xl mx-auto px-4">
+            <div className="animate-pulse">
+              <div className="h-8 bg-gray-200 rounded w-3/4 mb-6"></div>
+              <div className="h-4 bg-gray-200 rounded w-1/4 mb-4"></div>
+              <div className="h-48 bg-gray-200 rounded mb-6"></div>
+            </div>
           </div>
         </div>
-      </div>
+      </DashboardLayout>
     );
   }
 
-  if (error) {
+  // Error state - if community is not found or user can't access
+  if (error && !community) {
     return (
-      <div className="bg-gray-50 min-h-screen py-8">
-        <div className="max-w-3xl mx-auto px-4">
-          <div className="bg-red-50 border-l-4 border-red-400 p-4 mb-6">
-            <div className="flex">
-              <div className="flex-shrink-0">
-                <svg
-                  className="h-5 w-5 text-red-400"
-                  fill="currentColor"
-                  viewBox="0 0 20 20"
-                >
-                  <path
-                    fillRule="evenodd"
-                    d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z"
-                    clipRule="evenodd"
-                  />
-                </svg>
-              </div>
-              <div className="ml-3">
-                <p className="text-sm text-red-700">{error}</p>
+      <DashboardLayout>
+        <div className="bg-gray-50 min-h-screen py-8">
+          <div className="max-w-3xl mx-auto px-4">
+            <div className="bg-red-50 border-l-4 border-red-400 p-4 mb-6">
+              <div className="flex">
+                <div className="flex-shrink-0">
+                  <svg
+                    className="h-5 w-5 text-red-400"
+                    fill="currentColor"
+                    viewBox="0 0 20 20"
+                  >
+                    <path
+                      fillRule="evenodd"
+                      d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z"
+                      clipRule="evenodd"
+                    />
+                  </svg>
+                </div>
+                <div className="ml-3">
+                  <p className="text-sm text-red-700">{error}</p>
+                </div>
               </div>
             </div>
+            <Link
+              href={`/communities/${slug}`}
+              className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+            >
+              Back to Community
+            </Link>
           </div>
-          <Link
-            href={`/communities/${slug}`}
-            className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
-          >
-            Back to Community
-          </Link>
         </div>
-      </div>
+      </DashboardLayout>
     );
   }
 
   if (!community) {
     return (
-      <div className="bg-gray-50 min-h-screen py-8">
-        <div className="max-w-3xl mx-auto px-4">
-          <div className="bg-yellow-50 border-l-4 border-yellow-400 p-4 mb-6">
-            <div className="flex">
-              <div className="flex-shrink-0">
-                <svg
-                  className="h-5 w-5 text-yellow-400"
-                  fill="currentColor"
-                  viewBox="0 0 20 20"
-                >
-                  <path
-                    fillRule="evenodd"
-                    d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z"
-                    clipRule="evenodd"
-                  />
-                </svg>
-              </div>
-              <div className="ml-3">
-                <p className="text-sm text-yellow-700">Community not found</p>
+      <DashboardLayout>
+        <div className="bg-gray-50 min-h-screen py-8">
+          <div className="max-w-3xl mx-auto px-4">
+            <div className="bg-yellow-50 border-l-4 border-yellow-400 p-4 mb-6">
+              <div className="flex">
+                <div className="flex-shrink-0">
+                  <svg
+                    className="h-5 w-5 text-yellow-400"
+                    fill="currentColor"
+                    viewBox="0 0 20 20"
+                  >
+                    <path
+                      fillRule="evenodd"
+                      d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z"
+                      clipRule="evenodd"
+                    />
+                  </svg>
+                </div>
+                <div className="ml-3">
+                  <p className="text-sm text-yellow-700">Community not found</p>
+                </div>
               </div>
             </div>
+            <Link
+              href="/communities"
+              className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+            >
+              Back to Communities
+            </Link>
           </div>
-          <Link
-            href="/communities"
-            className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
-          >
-            Back to Communities
-          </Link>
         </div>
-      </div>
+      </DashboardLayout>
     );
   }
 
@@ -370,6 +375,7 @@ export default function CreatePostPage() {
     <DashboardLayout>
       <div className="bg-gray-50 min-h-screen py-8">
         <div className="max-w-3xl mx-auto px-4">
+          {/* Breadcrumb Navigation */}
           <div className="mb-6">
             <nav className="flex" aria-label="Breadcrumb">
               <ol className="inline-flex items-center space-x-1 md:space-x-3">
@@ -460,88 +466,59 @@ export default function CreatePostPage() {
               </div>
             )}
 
-            <form onSubmit={handleSubmit}>
+            <form onSubmit={handleSubmit} className="relative">
               <div className="space-y-6">
-                <div>
-                  <label
-                    htmlFor="postType"
-                    className="block text-sm font-medium text-gray-700"
-                  >
-                    Post Type <span className="text-red-500">*</span>
-                  </label>
-                  <select
+                {/* Post Type Selection */}
+                <div className="relative z-30">
+                  <CustomSelect
                     id="postType"
                     name="postType"
-                    className={`mt-1 block w-full rounded-md border ${
-                      formErrors.postType ? "border-red-300" : "border-gray-300"
-                    } py-2 pl-3 pr-10 text-base focus:border-blue-500 focus:outline-none focus:ring-blue-500 sm:text-sm`}
+                    label="Post Type"
                     value={postType}
-                    onChange={(e) => setPostType(e.target.value)}
+                    onChange={(value) => {
+                      console.log("Post type changed to:", value);
+                      setPostType(value);
+                    }}
                     required
-                  >
-                    <option value="" disabled>
-                      Select a post type
-                    </option>
-                    {postTypes.map((type) => (
-                      <option key={type.value} value={type.value}>
-                        {type.label}
-                      </option>
-                    ))}
-                  </select>
-                  {formErrors.postType && (
-                    <p className="mt-2 text-sm text-red-600">
-                      {formErrors.postType}
-                    </p>
-                  )}
+                    options={postTypes}
+                    placeholder="Select a post type"
+                    error={formErrors.postType}
+                  />
                 </div>
 
-                <div>
-                  <label
-                    htmlFor="title"
-                    className="block text-sm font-medium text-gray-700"
-                  >
-                    Title <span className="text-red-500">*</span>
-                  </label>
-                  <input
+                {/* Title Input */}
+                <div className="relative z-20">
+                  <Input
                     type="text"
                     name="title"
                     id="title"
-                    className={`mt-1 block w-full rounded-md ${
-                      formErrors.title ? "border-red-300" : "border-gray-300"
-                    } shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm`}
+                    label="Title"
                     value={title}
                     onChange={(e) => setTitle(e.target.value)}
                     required
+                    error={formErrors.title}
                   />
-                  {formErrors.title && (
-                    <p className="mt-2 text-sm text-red-600">{formErrors.title}</p>
-                  )}
                 </div>
 
-                <div>
+                {/* Content RichTextEditor */}
+                <div className="relative z-10">
                   <label
                     htmlFor="content"
-                    className="block text-sm font-medium text-gray-700"
+                    className="block text-sm font-medium text-gray-700 mb-1"
                   >
                     Content <span className="text-red-500">*</span>
                   </label>
-                  <textarea
-                    id="content"
-                    name="content"
-                    rows={6}
-                    className={`mt-1 block w-full rounded-md ${
-                      formErrors.content ? "border-red-300" : "border-gray-300"
-                    } shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm`}
+                  <RichTextEditor
                     value={content}
-                    onChange={(e) => setContent(e.target.value)}
+                    onChange={setContent}
+                    error={formErrors.content}
+                    placeholder="Write your post content here..."
+                    minHeight="300px"
                     required
-                  ></textarea>
-                  {formErrors.content && (
-                    <p className="mt-2 text-sm text-red-600">{formErrors.content}</p>
-                  )}
+                  />
                 </div>
 
-                {/* Event details (only shown if post type is 'event') */}
+                {/* Event Details (only shown for event post type) */}
                 {postType === "event" && (
                   <div className="space-y-6 bg-gray-50 p-4 rounded-md">
                     <h3 className="text-sm font-medium text-gray-900">
@@ -550,37 +527,25 @@ export default function CreatePostPage() {
 
                     {/* Event Date */}
                     <div>
-                      <label
-                        htmlFor="event-date"
-                        className="block text-sm font-medium text-gray-700 mb-1"
-                      >
-                        Event Date and Time
-                      </label>
-                      <input
+                      <Input
                         type="datetime-local"
                         name="event-date"
                         id="event-date"
+                        label="Event Date and Time"
                         value={eventDate}
                         onChange={(e) => setEventDate(e.target.value)}
-                        className="shadow-sm focus:ring-blue-500 focus:border-blue-500 block w-full sm:text-sm border-gray-300 rounded-md"
                       />
                     </div>
 
                     {/* Event Location */}
                     <div>
-                      <label
-                        htmlFor="event-location"
-                        className="block text-sm font-medium text-gray-700 mb-1"
-                      >
-                        Location
-                      </label>
-                      <input
+                      <Input
                         type="text"
                         name="event-location"
                         id="event-location"
+                        label="Location"
                         value={eventLocation}
                         onChange={(e) => setEventLocation(e.target.value)}
-                        className="shadow-sm focus:ring-blue-500 focus:border-blue-500 block w-full sm:text-sm border-gray-300 rounded-md"
                         placeholder="Where will the event take place?"
                       />
                     </div>
@@ -589,59 +554,31 @@ export default function CreatePostPage() {
 
                 {/* Image Upload */}
                 <div>
-                  <label
-                    htmlFor="image"
-                    className="block text-sm font-medium text-gray-700 mb-1"
-                  >
-                    Image (optional)
-                  </label>
-                  <input
-                    type="file"
-                    name="image"
+                  <FileUpload
                     id="image"
+                    name="image"
+                    label="Image (optional)"
                     accept="image/*"
                     onChange={(e) =>
                       setImage(e.target.files ? e.target.files[0] : null)
                     }
-                    className="block w-full text-sm text-gray-500
-                    file:mr-4 file:py-2 file:px-4
-                    file:rounded-md file:border-0
-                    file:text-sm file:font-medium
-                    file:bg-blue-50 file:text-blue-700
-                    hover:file:bg-blue-100
-                    "
+                    acceptedFormats="JPEG, PNG, GIF"
+                    maxSize="5MB"
                   />
-                  <p className="mt-1 text-xs text-gray-500">
-                    Supported formats: JPEG, PNG, GIF. Max size: 5MB.
-                  </p>
                 </div>
 
                 {/* File Attachment */}
                 <div>
-                  <label
-                    htmlFor="file"
-                    className="block text-sm font-medium text-gray-700 mb-1"
-                  >
-                    Attachment (optional)
-                  </label>
-                  <input
-                    type="file"
-                    name="file"
+                  <FileUpload
                     id="file"
+                    name="file"
+                    label="Attachment (optional)"
                     onChange={(e) =>
                       setFile(e.target.files ? e.target.files[0] : null)
                     }
-                    className="block w-full text-sm text-gray-500
-                    file:mr-4 file:py-2 file:px-4
-                    file:rounded-md file:border-0
-                    file:text-sm file:font-medium
-                    file:bg-blue-50 file:text-blue-700
-                    hover:file:bg-blue-100
-                    "
+                    acceptedFormats="PDF, DOC, DOCX, XLS, XLSX, PPT, PPTX"
+                    maxSize="10MB"
                   />
-                  <p className="mt-1 text-xs text-gray-500">
-                    Supported formats: PDF, DOC, DOCX, XLS, XLSX, PPT, PPTX. Max size: 10MB.
-                  </p>
                 </div>
 
                 {/* Form Actions */}
@@ -652,44 +589,13 @@ export default function CreatePostPage() {
                   >
                     Cancel
                   </Link>
-                  <button
+                  <Button
                     type="submit"
                     disabled={!title || !content || submitting}
-                    className={`inline-flex justify-center py-2 px-4 border border-transparent shadow-sm text-sm font-medium rounded-md text-white 
-                      ${
-                        !title || !content || submitting
-                          ? "bg-gray-300 cursor-not-allowed"
-                          : "bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
-                      }`}
+                    isLoading={submitting}
                   >
-                    {submitting ? (
-                      <>
-                        <svg
-                          className="animate-spin -ml-1 mr-2 h-4 w-4 text-white"
-                          xmlns="http://www.w3.org/2000/svg"
-                          fill="none"
-                          viewBox="0 0 24 24"
-                        >
-                          <circle
-                            className="opacity-25"
-                            cx="12"
-                            cy="12"
-                            r="10"
-                            stroke="currentColor"
-                            strokeWidth="4"
-                          ></circle>
-                          <path
-                            className="opacity-75"
-                            fill="currentColor"
-                            d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-                          ></path>
-                        </svg>
-                        Creating Post...
-                      </>
-                    ) : (
-                      "Create Post"
-                    )}
-                  </button>
+                    Create Post
+                  </Button>
                 </div>
               </div>
             </form>

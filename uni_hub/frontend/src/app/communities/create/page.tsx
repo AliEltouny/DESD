@@ -6,6 +6,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { createCommunity } from "@/services/communityService";
 import MediaUpload from "@/components/ui/MediaUpload";
 import DashboardLayout from "@/components/layouts/DashboardLayout";
+import CategorySelect from "@/components/ui/CategorySelect";
 
 export default function CreateCommunityPage() {
   const router = useRouter();
@@ -225,12 +226,13 @@ export default function CreateCommunityPage() {
                         name="name"
                         value={name}
                         onChange={(e) => setName(e.target.value)}
-                        className={`w-full px-4 py-3 border rounded-md shadow-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all ${
+                        className={`w-full px-4 py-3 border rounded-md shadow-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all text-gray-900 ${
                           errors.name
                             ? "border-red-500 bg-red-50"
                             : "border-gray-300 hover:border-gray-400"
                         }`}
                         placeholder="Enter a unique name for your community"
+                        style={{ color: "#111827" }}
                       />
                       {errors.name && (
                         <div className="mt-2 flex items-start">
@@ -267,12 +269,13 @@ export default function CreateCommunityPage() {
                       value={description}
                       onChange={(e) => setDescription(e.target.value)}
                       rows={4}
-                      className={`w-full px-4 py-3 border rounded-md shadow-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all ${
+                      className={`w-full px-4 py-3 border rounded-md shadow-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all text-gray-900 ${
                         errors.description
                           ? "border-red-500 bg-red-50"
                           : "border-gray-300 hover:border-gray-400"
                       }`}
                       placeholder="Describe what your community is about"
+                      style={{ color: "#111827" }}
                     />
                     {errors.description && (
                       <div className="mt-2 flex items-start">
@@ -311,12 +314,13 @@ export default function CreateCommunityPage() {
                         name="short_description"
                         value={shortDescription}
                         onChange={(e) => setShortDescription(e.target.value)}
-                        className={`w-full px-4 py-3 border rounded-md shadow-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all ${
+                        className={`w-full px-4 py-3 border rounded-md shadow-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all text-gray-900 ${
                           errors.shortDescription
                             ? "border-red-500 bg-red-50"
                             : "border-gray-300 hover:border-gray-400"
                         }`}
                         placeholder="A brief summary for preview cards (optional)"
+                        style={{ color: "#111827" }}
                       />
                       {errors.shortDescription && (
                         <div className="mt-2 flex items-start">
@@ -347,66 +351,16 @@ export default function CreateCommunityPage() {
 
                   {/* Category */}
                   <div className="mb-4">
-                    <label
-                      htmlFor="category"
-                      className="block text-sm font-medium text-gray-700 mb-1"
-                    >
-                      Category <span className="text-red-600">*</span>
-                    </label>
-                    <div className="relative">
-                      <select
-                        id="category"
-                        name="category"
-                        value={category}
-                        onChange={(e) => setCategory(e.target.value)}
-                        className={`w-full px-4 py-3 border rounded-md shadow-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all appearance-none ${
-                          errors.category
-                            ? "border-red-500 bg-red-50"
-                            : "border-gray-300 hover:border-gray-400"
-                        }`}
-                      >
-                        {categories.map((cat) => (
-                          <option key={cat.value} value={cat.value}>
-                            {cat.label}
-                          </option>
-                        ))}
-                      </select>
-                      <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-3 text-gray-500">
-                        <svg
-                          className="h-5 w-5"
-                          fill="none"
-                          stroke="currentColor"
-                          viewBox="0 0 24 24"
-                        >
-                          <path
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                            strokeWidth="2"
-                            d="M19 9l-7 7-7-7"
-                          />
-                        </svg>
-                      </div>
-                      {errors.category && (
-                        <div className="mt-2 flex items-start">
-                          <svg
-                            className="h-5 w-5 text-red-500 mr-1 mt-0.5 flex-shrink-0"
-                            fill="none"
-                            stroke="currentColor"
-                            viewBox="0 0 24 24"
-                          >
-                            <path
-                              strokeLinecap="round"
-                              strokeLinejoin="round"
-                              strokeWidth="2"
-                              d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"
-                            />
-                          </svg>
-                          <p className="text-sm text-red-600">
-                            {errors.category}
-                          </p>
-                        </div>
-                      )}
-                    </div>
+                    <CategorySelect
+                      id="category"
+                      name="category"
+                      label="Category"
+                      value={category}
+                      onChange={setCategory}
+                      options={categories}
+                      required
+                      error={errors.category}
+                    />
                   </div>
 
                   {/* Tags */}
@@ -425,8 +379,9 @@ export default function CreateCommunityPage() {
                           name="tags"
                           value={tags}
                           onChange={(e) => setTags(e.target.value)}
-                          className="w-full px-4 py-3 border border-gray-300 rounded-md shadow-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all hover:border-gray-400"
+                          className="w-full px-4 py-3 border border-gray-300 rounded-md shadow-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all hover:border-gray-400 text-gray-900"
                           placeholder="Enter comma-separated tags (e.g. engineering, robotics, computer science)"
+                          style={{ color: "#111827" }}
                         />
                         {tags && (
                           <button
@@ -501,6 +456,7 @@ export default function CreateCommunityPage() {
                       aspectRatio={1}
                       description="Recommended: Square image, at least 300x300 pixels. Max 5MB."
                       error={errors.image}
+                      maxSize={5}
                     />
                   </div>
 
@@ -516,6 +472,7 @@ export default function CreateCommunityPage() {
                       aspectRatio={3}
                       description="Recommended: Wide image (3:1 ratio), at least 1200x400 pixels. Max 5MB."
                       error={errors.banner}
+                      maxSize={5}
                     />
                   </div>
                 </div>
@@ -540,8 +497,9 @@ export default function CreateCommunityPage() {
                       value={rules}
                       onChange={(e) => setRules(e.target.value)}
                       rows={4}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500"
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 text-gray-900"
                       placeholder="Enter community rules or guidelines (optional)"
+                      style={{ color: "#111827" }}
                     />
                   </div>
 
@@ -620,11 +578,15 @@ export default function CreateCommunityPage() {
                   type="submit"
                   disabled={isSubmitting}
                   className="inline-flex items-center px-5 py-2.5 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors disabled:opacity-50"
+                  style={{
+                    height: '42px',
+                    transform: 'none'
+                  }}
                 >
                   {isSubmitting ? (
                     <>
                       <div className="mr-2 h-4 w-4 border-t-2 border-b-2 border-white rounded-full animate-spin" />
-                      Creating Community...
+                      <span>Creating Community...</span>
                     </>
                   ) : (
                     "Create Community"
