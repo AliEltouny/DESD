@@ -18,6 +18,9 @@ class CommunityService:
         """
         Get a filtered queryset of communities based on parameters.
         """
+        # Convert user to user.id if authenticated to avoid serialization issues
+        user_id = user.id if user and hasattr(user, 'id') else None
+        
         queryset = Community.objects.all()
         
         # Add select_related for foreign keys
@@ -50,16 +53,16 @@ class CommunityService:
             queryset = queryset.filter(tags__icontains=tag)
         
         # Only show communities the user is a member of
-        if member_of and user.is_authenticated:
-            queryset = queryset.filter(members=user)
+        if member_of and user_id:
+            queryset = queryset.filter(members__id=user_id)
         
         # Only show public communities or communities the user is a member of
-        if not user.is_authenticated:
+        if not user_id:
             queryset = queryset.filter(is_private=False)
         else:
             queryset = queryset.filter(
                 Q(is_private=False) | 
-                Q(members=user)
+                Q(members__id=user_id)
             ).distinct()
         
         # Apply ordering

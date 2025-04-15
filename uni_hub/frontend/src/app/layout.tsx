@@ -51,7 +51,27 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en">
+    <html lang="en" suppressHydrationWarning>
+      <head>
+        <style dangerouslySetInnerHTML={{ __html: `
+          button, button:focus, button:active, a[role="button"], [type="button"], [type="submit"], [type="reset"], .btn {
+            outline: none !important;
+            outline-style: none !important;
+            outline-width: 0 !important;
+            box-shadow: none !important;
+            -webkit-appearance: none !important;
+            -moz-appearance: none !important;
+          }
+          *:focus {
+            outline: none !important;
+            box-shadow: none !important;
+          }
+          *:focus-visible {
+            outline: none !important;
+            box-shadow: none !important;
+          }
+        `}} />
+      </head>
       <body className={inter.className}>
         <Providers>{children}</Providers>
       </body>

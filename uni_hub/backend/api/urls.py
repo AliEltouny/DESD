@@ -13,6 +13,8 @@ urlpatterns = [
         'get': 'retrieve',
         'patch': 'partial_update',
     }), name='profile'),
+    path('password-reset/request', views.password_reset_request, name='password-reset-request'),
+    path('password-reset/confirm', views.password_reset_confirm, name='password-reset-confirm'),
     
     # Authentication - With trailing slashes
     path('signup/', views.signup, name='signup-with-slash'),
@@ -23,6 +25,8 @@ urlpatterns = [
         'get': 'retrieve',
         'patch': 'partial_update',
     }), name='profile-with-slash'),
+    path('password-reset/request/', views.password_reset_request, name='password-reset-request-with-slash'),
+    path('password-reset/confirm/', views.password_reset_confirm, name='password-reset-confirm-with-slash'),
     
     # Testimonials - Without trailing slash
     path('testimonials', views.TestimonialViewSet.as_view({

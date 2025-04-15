@@ -18,5 +18,8 @@ module.exports = {
       },
     },
   },
-  plugins: [],
+  plugins: [
+    require('@tailwindcss/forms'),
+    require('./src/lib/tailwind-plugin.js'), // custom plugin for button focus styles
+  ],
 };

@@ -4,6 +4,19 @@ import hashlib
 import json
 from django.contrib.auth.models import AnonymousUser
 
+"""
+Cache Utilities for Communities App
+
+This module provides caching decorators and utilities for the communities app.
+Key features:
+- Cached property decorator for expensive model properties
+- Cached method decorator for expensive method calls
+- Cached queryset decorator for optimizing database queries
+- Cache key generation with support for non-serializable objects (Users, etc.)
+
+Important: When dealing with User objects in caching, the system converts them
+to a string representation with their ID to avoid JSON serialization issues.
+"""
 
 def generate_cache_key(prefix, *args, **kwargs):
     """Generate a unique cache key based on provided arguments"""
@@ -12,6 +25,9 @@ def generate_cache_key(prefix, *args, **kwargs):
     for arg in args:
         if isinstance(arg, AnonymousUser):
             processed_args.append("AnonymousUser")
+        elif hasattr(arg, '__class__') and arg.__class__.__name__ == 'User':
+            # Handle User objects by using their ID
+            processed_args.append(f"User:{arg.id}")
         else:
             processed_args.append(arg)
     
@@ -21,6 +37,9 @@ def generate_cache_key(prefix, *args, **kwargs):
         if k not in ('request', 'self', 'cls'):
             if isinstance(v, AnonymousUser):
                 processed_kwargs[k] = "AnonymousUser"
+            elif hasattr(v, '__class__') and v.__class__.__name__ == 'User':
+                # Handle User objects by using their ID
+                processed_kwargs[k] = f"User:{v.id}"
             else:
                 processed_kwargs[k] = v
     
@@ -31,7 +50,15 @@ def generate_cache_key(prefix, *args, **kwargs):
     }
     
     # Convert to JSON and hash to keep keys at a reasonable length
-    key_suffix = hashlib.md5(json.dumps(key_data, sort_keys=True).encode('utf-8')).hexdigest()
+    try:
+        key_suffix = hashlib.md5(json.dumps(key_data, sort_keys=True).encode('utf-8')).hexdigest()
+    except TypeError as e:
+        # If we still have serialization issues, create a simpler key
+        print(f"Cache key serialization error: {e}")
+        # Generate a fallback key using string representations
+        fallback_data = f"{prefix}:{str(processed_args)}:{str(processed_kwargs)}"
+        key_suffix = hashlib.md5(fallback_data.encode('utf-8')).hexdigest()
+        
     return f"{prefix}:{key_suffix}"
 
 

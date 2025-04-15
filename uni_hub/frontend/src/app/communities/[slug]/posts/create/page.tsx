@@ -9,6 +9,7 @@ import {
   createPost,
   Community,
 } from "@/services/communityService";
+import DashboardLayout from "@/components/layouts/DashboardLayout";
 
 export default function CreatePostPage() {
   const { slug } = useParams();
@@ -178,40 +179,72 @@ export default function CreatePostPage() {
         throw new Error("Community data is missing");
       }
       
-      console.log("Creating post with data:", {
-        title,
-        content, 
-        postType,
-        isCreator: community?.creator?.id === user?.id,
-        communityId: community.id,
-        communitySlug: slug,
-        user: user?.id
-      });
+      // Debug log what we're about to send
+      console.log("post_type:", postType);
       
-      // Create form data for the post
-      const formData = new FormData();
-      formData.append("title", title);
-      formData.append("content", content);
-      formData.append("post_type", postType);
-      formData.append("community", community.id.toString());
+      // Try a different approach - use a direct JSON object instead of FormData
+      const postData = {
+        title: title,
+        content: content,
+        post_type: postType
+      };
       
-      // Add optional fields if they exist
+      // Add optional fields only if they exist and have values
       if (postType === "event") {
-        if (eventDate) formData.append("event_date", eventDate);
-        if (eventLocation) formData.append("event_location", eventLocation);
+        if (eventDate) {
+          postData["event_date"] = eventDate;
+        }
+        if (eventLocation) {
+          postData["event_location"] = eventLocation;
+        }
       }
       
-      if (image) formData.append("image", image);
-      if (file) formData.append("file", file);
+      console.log("Attempting to create post for community:", slug);
+      console.log("Post data being sent:", postData);
       
-      // Submit the post
+      // Import directly from the API to bypass any wrapper issues
+      const { postApi } = await import("@/services/api/postApi");
+      
       try {
-        const response = await createPost(slug as string, formData);
+        // Use the API directly
+        const response = await postApi.createPost(slug as string, postData);
         console.log("Post creation successful:", response);
         // Redirect to community page on success
         router.push(`/communities/${slug}`);
       } catch (postError: any) {
         console.error("Post creation error details:", postError?.response?.data || postError);
+        
+        // Extract validation errors from the response
+        const validationErrors = postError?.response?.data || {};
+        if (postError?.response?.status === 400 && typeof validationErrors === "object") {
+          // Map backend validation errors to form errors
+          const newFormErrors: any = {};
+          
+          if (validationErrors.title) {
+            newFormErrors.title = Array.isArray(validationErrors.title) 
+              ? validationErrors.title[0] 
+              : validationErrors.title;
+          }
+          
+          if (validationErrors.content) {
+            newFormErrors.content = Array.isArray(validationErrors.content) 
+              ? validationErrors.content[0] 
+              : validationErrors.content;
+          }
+          
+          if (validationErrors.post_type) {
+            newFormErrors.postType = Array.isArray(validationErrors.post_type) 
+              ? validationErrors.post_type[0] 
+              : validationErrors.post_type;
+          }
+          
+          if (Object.keys(newFormErrors).length > 0) {
+            setFormErrors(newFormErrors);
+            setError("Please correct the errors in the form.");
+            setSubmitting(false);
+            return;
+          }
+        }
         
         // If we get a 403 permission error and user is creator, try joining the community first
         if (isCreator && postError?.response?.status === 403) {
@@ -226,7 +259,7 @@ export default function CreatePostPage() {
             console.log("Joined community, trying post creation again");
             
             // Try creating the post again
-            const retryResponse = await createPost(slug as string, formData);
+            const retryResponse = await postApi.createPost(slug as string, postData);
             console.log("Retry post creation successful:", retryResponse);
             
             // Redirect to community page on success
@@ -334,333 +367,335 @@ export default function CreatePostPage() {
   }
 
   return (
-    <div className="bg-gray-50 min-h-screen py-8">
-      <div className="max-w-3xl mx-auto px-4">
-        <div className="mb-6">
-          <nav className="flex" aria-label="Breadcrumb">
-            <ol className="inline-flex items-center space-x-1 md:space-x-3">
-              <li>
-                <Link
-                  href="/communities"
-                  className="inline-flex items-center text-sm font-medium text-gray-700 hover:text-blue-600"
-                >
-                  Communities
-                </Link>
-              </li>
-              <li>
-                <div className="flex items-center">
-                  <svg
-                    className="w-3 h-3 text-gray-400 mx-1"
-                    aria-hidden="true"
-                    xmlns="http://www.w3.org/2000/svg"
-                    fill="none"
-                    viewBox="0 0 6 10"
+    <DashboardLayout>
+      <div className="bg-gray-50 min-h-screen py-8">
+        <div className="max-w-3xl mx-auto px-4">
+          <div className="mb-6">
+            <nav className="flex" aria-label="Breadcrumb">
+              <ol className="inline-flex items-center space-x-1 md:space-x-3">
+                <li>
+                  <Link
+                    href="/communities"
+                    className="inline-flex items-center text-sm font-medium text-gray-700 hover:text-blue-600"
                   >
-                    <path
-                      stroke="currentColor"
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth="2"
-                      d="m1 9 4-4-4-4"
-                    />
-                  </svg>
+                    Communities
+                  </Link>
+                </li>
+                <li>
+                  <div className="flex items-center">
+                    <svg
+                      className="w-3 h-3 text-gray-400 mx-1"
+                      aria-hidden="true"
+                      xmlns="http://www.w3.org/2000/svg"
+                      fill="none"
+                      viewBox="0 0 6 10"
+                    >
+                      <path
+                        stroke="currentColor"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth="2"
+                        d="m1 9 4-4-4-4"
+                      />
+                    </svg>
+                    <Link
+                      href={`/communities/${slug}`}
+                      className="ml-1 text-sm font-medium text-gray-700 hover:text-blue-600 md:ml-2"
+                    >
+                      {community?.name}
+                    </Link>
+                  </div>
+                </li>
+                <li aria-current="page">
+                  <div className="flex items-center">
+                    <svg
+                      className="w-3 h-3 text-gray-400 mx-1"
+                      aria-hidden="true"
+                      xmlns="http://www.w3.org/2000/svg"
+                      fill="none"
+                      viewBox="0 0 6 10"
+                    >
+                      <path
+                        stroke="currentColor"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth="2"
+                        d="m1 9 4-4-4-4"
+                      />
+                    </svg>
+                    <span className="ml-1 text-sm font-medium text-gray-500 md:ml-2">
+                      Create Post
+                    </span>
+                  </div>
+                </li>
+              </ol>
+            </nav>
+          </div>
+
+          <div className="bg-white shadow rounded-lg p-6 mb-6">
+            <h1 className="text-2xl font-bold text-gray-900 mb-6">
+              Create a new post in {community?.name}
+            </h1>
+
+            {error && (
+              <div className="bg-red-50 border-l-4 border-red-400 p-4 mb-6">
+                <div className="flex">
+                  <div className="flex-shrink-0">
+                    <svg
+                      className="h-5 w-5 text-red-400"
+                      fill="currentColor"
+                      viewBox="0 0 20 20"
+                    >
+                      <path
+                        fillRule="evenodd"
+                        d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z"
+                        clipRule="evenodd"
+                      />
+                    </svg>
+                  </div>
+                  <div className="ml-3">
+                    <p className="text-sm text-red-700">{error}</p>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            <form onSubmit={handleSubmit}>
+              <div className="space-y-6">
+                <div>
+                  <label
+                    htmlFor="postType"
+                    className="block text-sm font-medium text-gray-700"
+                  >
+                    Post Type <span className="text-red-500">*</span>
+                  </label>
+                  <select
+                    id="postType"
+                    name="postType"
+                    className={`mt-1 block w-full rounded-md border ${
+                      formErrors.postType ? "border-red-300" : "border-gray-300"
+                    } py-2 pl-3 pr-10 text-base focus:border-blue-500 focus:outline-none focus:ring-blue-500 sm:text-sm`}
+                    value={postType}
+                    onChange={(e) => setPostType(e.target.value)}
+                    required
+                  >
+                    <option value="" disabled>
+                      Select a post type
+                    </option>
+                    {postTypes.map((type) => (
+                      <option key={type.value} value={type.value}>
+                        {type.label}
+                      </option>
+                    ))}
+                  </select>
+                  {formErrors.postType && (
+                    <p className="mt-2 text-sm text-red-600">
+                      {formErrors.postType}
+                    </p>
+                  )}
+                </div>
+
+                <div>
+                  <label
+                    htmlFor="title"
+                    className="block text-sm font-medium text-gray-700"
+                  >
+                    Title <span className="text-red-500">*</span>
+                  </label>
+                  <input
+                    type="text"
+                    name="title"
+                    id="title"
+                    className={`mt-1 block w-full rounded-md ${
+                      formErrors.title ? "border-red-300" : "border-gray-300"
+                    } shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm`}
+                    value={title}
+                    onChange={(e) => setTitle(e.target.value)}
+                    required
+                  />
+                  {formErrors.title && (
+                    <p className="mt-2 text-sm text-red-600">{formErrors.title}</p>
+                  )}
+                </div>
+
+                <div>
+                  <label
+                    htmlFor="content"
+                    className="block text-sm font-medium text-gray-700"
+                  >
+                    Content <span className="text-red-500">*</span>
+                  </label>
+                  <textarea
+                    id="content"
+                    name="content"
+                    rows={6}
+                    className={`mt-1 block w-full rounded-md ${
+                      formErrors.content ? "border-red-300" : "border-gray-300"
+                    } shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm`}
+                    value={content}
+                    onChange={(e) => setContent(e.target.value)}
+                    required
+                  ></textarea>
+                  {formErrors.content && (
+                    <p className="mt-2 text-sm text-red-600">{formErrors.content}</p>
+                  )}
+                </div>
+
+                {/* Event details (only shown if post type is 'event') */}
+                {postType === "event" && (
+                  <div className="space-y-6 bg-gray-50 p-4 rounded-md">
+                    <h3 className="text-sm font-medium text-gray-900">
+                      Event Details
+                    </h3>
+
+                    {/* Event Date */}
+                    <div>
+                      <label
+                        htmlFor="event-date"
+                        className="block text-sm font-medium text-gray-700 mb-1"
+                      >
+                        Event Date and Time
+                      </label>
+                      <input
+                        type="datetime-local"
+                        name="event-date"
+                        id="event-date"
+                        value={eventDate}
+                        onChange={(e) => setEventDate(e.target.value)}
+                        className="shadow-sm focus:ring-blue-500 focus:border-blue-500 block w-full sm:text-sm border-gray-300 rounded-md"
+                      />
+                    </div>
+
+                    {/* Event Location */}
+                    <div>
+                      <label
+                        htmlFor="event-location"
+                        className="block text-sm font-medium text-gray-700 mb-1"
+                      >
+                        Location
+                      </label>
+                      <input
+                        type="text"
+                        name="event-location"
+                        id="event-location"
+                        value={eventLocation}
+                        onChange={(e) => setEventLocation(e.target.value)}
+                        className="shadow-sm focus:ring-blue-500 focus:border-blue-500 block w-full sm:text-sm border-gray-300 rounded-md"
+                        placeholder="Where will the event take place?"
+                      />
+                    </div>
+                  </div>
+                )}
+
+                {/* Image Upload */}
+                <div>
+                  <label
+                    htmlFor="image"
+                    className="block text-sm font-medium text-gray-700 mb-1"
+                  >
+                    Image (optional)
+                  </label>
+                  <input
+                    type="file"
+                    name="image"
+                    id="image"
+                    accept="image/*"
+                    onChange={(e) =>
+                      setImage(e.target.files ? e.target.files[0] : null)
+                    }
+                    className="block w-full text-sm text-gray-500
+                    file:mr-4 file:py-2 file:px-4
+                    file:rounded-md file:border-0
+                    file:text-sm file:font-medium
+                    file:bg-blue-50 file:text-blue-700
+                    hover:file:bg-blue-100
+                    "
+                  />
+                  <p className="mt-1 text-xs text-gray-500">
+                    Supported formats: JPEG, PNG, GIF. Max size: 5MB.
+                  </p>
+                </div>
+
+                {/* File Attachment */}
+                <div>
+                  <label
+                    htmlFor="file"
+                    className="block text-sm font-medium text-gray-700 mb-1"
+                  >
+                    Attachment (optional)
+                  </label>
+                  <input
+                    type="file"
+                    name="file"
+                    id="file"
+                    onChange={(e) =>
+                      setFile(e.target.files ? e.target.files[0] : null)
+                    }
+                    className="block w-full text-sm text-gray-500
+                    file:mr-4 file:py-2 file:px-4
+                    file:rounded-md file:border-0
+                    file:text-sm file:font-medium
+                    file:bg-blue-50 file:text-blue-700
+                    hover:file:bg-blue-100
+                    "
+                  />
+                  <p className="mt-1 text-xs text-gray-500">
+                    Supported formats: PDF, DOC, DOCX, XLS, XLSX, PPT, PPTX. Max size: 10MB.
+                  </p>
+                </div>
+
+                {/* Form Actions */}
+                <div className="flex justify-end space-x-3 pt-4 border-t border-gray-200">
                   <Link
                     href={`/communities/${slug}`}
-                    className="ml-1 text-sm font-medium text-gray-700 hover:text-blue-600 md:ml-2"
+                    className="inline-flex justify-center py-2 px-4 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
                   >
-                    {community?.name}
+                    Cancel
                   </Link>
-                </div>
-              </li>
-              <li aria-current="page">
-                <div className="flex items-center">
-                  <svg
-                    className="w-3 h-3 text-gray-400 mx-1"
-                    aria-hidden="true"
-                    xmlns="http://www.w3.org/2000/svg"
-                    fill="none"
-                    viewBox="0 0 6 10"
+                  <button
+                    type="submit"
+                    disabled={!title || !content || submitting}
+                    className={`inline-flex justify-center py-2 px-4 border border-transparent shadow-sm text-sm font-medium rounded-md text-white 
+                      ${
+                        !title || !content || submitting
+                          ? "bg-gray-300 cursor-not-allowed"
+                          : "bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+                      }`}
                   >
-                    <path
-                      stroke="currentColor"
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth="2"
-                      d="m1 9 4-4-4-4"
-                    />
-                  </svg>
-                  <span className="ml-1 text-sm font-medium text-gray-500 md:ml-2">
-                    Create Post
-                  </span>
-                </div>
-              </li>
-            </ol>
-          </nav>
-        </div>
-
-        <div className="bg-white shadow rounded-lg p-6 mb-6">
-          <h1 className="text-2xl font-bold text-gray-900 mb-6">
-            Create a new post in {community?.name}
-          </h1>
-
-          {error && (
-            <div className="bg-red-50 border-l-4 border-red-400 p-4 mb-6">
-              <div className="flex">
-                <div className="flex-shrink-0">
-                  <svg
-                    className="h-5 w-5 text-red-400"
-                    fill="currentColor"
-                    viewBox="0 0 20 20"
-                  >
-                    <path
-                      fillRule="evenodd"
-                      d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z"
-                      clipRule="evenodd"
-                    />
-                  </svg>
-                </div>
-                <div className="ml-3">
-                  <p className="text-sm text-red-700">{error}</p>
+                    {submitting ? (
+                      <>
+                        <svg
+                          className="animate-spin -ml-1 mr-2 h-4 w-4 text-white"
+                          xmlns="http://www.w3.org/2000/svg"
+                          fill="none"
+                          viewBox="0 0 24 24"
+                        >
+                          <circle
+                            className="opacity-25"
+                            cx="12"
+                            cy="12"
+                            r="10"
+                            stroke="currentColor"
+                            strokeWidth="4"
+                          ></circle>
+                          <path
+                            className="opacity-75"
+                            fill="currentColor"
+                            d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                          ></path>
+                        </svg>
+                        Creating Post...
+                      </>
+                    ) : (
+                      "Create Post"
+                    )}
+                  </button>
                 </div>
               </div>
-            </div>
-          )}
-
-          <form onSubmit={handleSubmit}>
-            <div className="space-y-6">
-              <div>
-                <label
-                  htmlFor="postType"
-                  className="block text-sm font-medium text-gray-700"
-                >
-                  Post Type <span className="text-red-500">*</span>
-                </label>
-                <select
-                  id="postType"
-                  name="postType"
-                  className={`mt-1 block w-full rounded-md border ${
-                    formErrors.postType ? "border-red-300" : "border-gray-300"
-                  } py-2 pl-3 pr-10 text-base focus:border-blue-500 focus:outline-none focus:ring-blue-500 sm:text-sm`}
-                  value={postType}
-                  onChange={(e) => setPostType(e.target.value)}
-                  required
-                >
-                  <option value="" disabled>
-                    Select a post type
-                  </option>
-                  {postTypes.map((type) => (
-                    <option key={type.value} value={type.value}>
-                      {type.label}
-                    </option>
-                  ))}
-                </select>
-                {formErrors.postType && (
-                  <p className="mt-2 text-sm text-red-600">
-                    {formErrors.postType}
-                  </p>
-                )}
-              </div>
-
-              <div>
-                <label
-                  htmlFor="title"
-                  className="block text-sm font-medium text-gray-700"
-                >
-                  Title <span className="text-red-500">*</span>
-                </label>
-                <input
-                  type="text"
-                  name="title"
-                  id="title"
-                  className={`mt-1 block w-full rounded-md ${
-                    formErrors.title ? "border-red-300" : "border-gray-300"
-                  } shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm`}
-                  value={title}
-                  onChange={(e) => setTitle(e.target.value)}
-                  required
-                />
-                {formErrors.title && (
-                  <p className="mt-2 text-sm text-red-600">{formErrors.title}</p>
-                )}
-              </div>
-
-              <div>
-                <label
-                  htmlFor="content"
-                  className="block text-sm font-medium text-gray-700"
-                >
-                  Content <span className="text-red-500">*</span>
-                </label>
-                <textarea
-                  id="content"
-                  name="content"
-                  rows={6}
-                  className={`mt-1 block w-full rounded-md ${
-                    formErrors.content ? "border-red-300" : "border-gray-300"
-                  } shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm`}
-                  value={content}
-                  onChange={(e) => setContent(e.target.value)}
-                  required
-                ></textarea>
-                {formErrors.content && (
-                  <p className="mt-2 text-sm text-red-600">{formErrors.content}</p>
-                )}
-              </div>
-
-              {/* Event details (only shown if post type is 'event') */}
-              {postType === "event" && (
-                <div className="space-y-6 bg-gray-50 p-4 rounded-md">
-                  <h3 className="text-sm font-medium text-gray-900">
-                    Event Details
-                  </h3>
-
-                  {/* Event Date */}
-                  <div>
-                    <label
-                      htmlFor="event-date"
-                      className="block text-sm font-medium text-gray-700 mb-1"
-                    >
-                      Event Date and Time
-                    </label>
-                    <input
-                      type="datetime-local"
-                      name="event-date"
-                      id="event-date"
-                      value={eventDate}
-                      onChange={(e) => setEventDate(e.target.value)}
-                      className="shadow-sm focus:ring-blue-500 focus:border-blue-500 block w-full sm:text-sm border-gray-300 rounded-md"
-                    />
-                  </div>
-
-                  {/* Event Location */}
-                  <div>
-                    <label
-                      htmlFor="event-location"
-                      className="block text-sm font-medium text-gray-700 mb-1"
-                    >
-                      Location
-                    </label>
-                    <input
-                      type="text"
-                      name="event-location"
-                      id="event-location"
-                      value={eventLocation}
-                      onChange={(e) => setEventLocation(e.target.value)}
-                      className="shadow-sm focus:ring-blue-500 focus:border-blue-500 block w-full sm:text-sm border-gray-300 rounded-md"
-                      placeholder="Where will the event take place?"
-                    />
-                  </div>
-                </div>
-              )}
-
-              {/* Image Upload */}
-              <div>
-                <label
-                  htmlFor="image"
-                  className="block text-sm font-medium text-gray-700 mb-1"
-                >
-                  Image (optional)
-                </label>
-                <input
-                  type="file"
-                  name="image"
-                  id="image"
-                  accept="image/*"
-                  onChange={(e) =>
-                    setImage(e.target.files ? e.target.files[0] : null)
-                  }
-                  className="block w-full text-sm text-gray-500
-                  file:mr-4 file:py-2 file:px-4
-                  file:rounded-md file:border-0
-                  file:text-sm file:font-medium
-                  file:bg-blue-50 file:text-blue-700
-                  hover:file:bg-blue-100
-                  "
-                />
-                <p className="mt-1 text-xs text-gray-500">
-                  Supported formats: JPEG, PNG, GIF. Max size: 5MB.
-                </p>
-              </div>
-
-              {/* File Attachment */}
-              <div>
-                <label
-                  htmlFor="file"
-                  className="block text-sm font-medium text-gray-700 mb-1"
-                >
-                  Attachment (optional)
-                </label>
-                <input
-                  type="file"
-                  name="file"
-                  id="file"
-                  onChange={(e) =>
-                    setFile(e.target.files ? e.target.files[0] : null)
-                  }
-                  className="block w-full text-sm text-gray-500
-                  file:mr-4 file:py-2 file:px-4
-                  file:rounded-md file:border-0
-                  file:text-sm file:font-medium
-                  file:bg-blue-50 file:text-blue-700
-                  hover:file:bg-blue-100
-                  "
-                />
-                <p className="mt-1 text-xs text-gray-500">
-                  Supported formats: PDF, DOC, DOCX, XLS, XLSX, PPT, PPTX. Max size: 10MB.
-                </p>
-              </div>
-
-              {/* Form Actions */}
-              <div className="flex justify-end space-x-3 pt-4 border-t border-gray-200">
-                <Link
-                  href={`/communities/${slug}`}
-                  className="inline-flex justify-center py-2 px-4 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
-                >
-                  Cancel
-                </Link>
-                <button
-                  type="submit"
-                  disabled={!title || !content || submitting}
-                  className={`inline-flex justify-center py-2 px-4 border border-transparent shadow-sm text-sm font-medium rounded-md text-white 
-                    ${
-                      !title || !content || submitting
-                        ? "bg-gray-300 cursor-not-allowed"
-                        : "bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
-                    }`}
-                >
-                  {submitting ? (
-                    <>
-                      <svg
-                        className="animate-spin -ml-1 mr-2 h-4 w-4 text-white"
-                        xmlns="http://www.w3.org/2000/svg"
-                        fill="none"
-                        viewBox="0 0 24 24"
-                      >
-                        <circle
-                          className="opacity-25"
-                          cx="12"
-                          cy="12"
-                          r="10"
-                          stroke="currentColor"
-                          strokeWidth="4"
-                        ></circle>
-                        <path
-                          className="opacity-75"
-                          fill="currentColor"
-                          d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-                        ></path>
-                      </svg>
-                      Creating Post...
-                    </>
-                  ) : (
-                    "Create Post"
-                  )}
-                </button>
-              </div>
-            </div>
-          </form>
+            </form>
+          </div>
         </div>
       </div>
-    </div>
+    </DashboardLayout>
   );
 } 

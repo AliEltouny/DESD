@@ -84,7 +84,7 @@ const RegisterPage = () => {
     setValidationMessages(messages);
   }, [formData, touched]);
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
     setFormData((prev) => ({ ...prev, [name]: value }));
   };
@@ -244,7 +244,7 @@ const RegisterPage = () => {
                     onChange={handleChange}
                     onBlur={handleBlur}
                     error={validationMessages.firstName}
-                    className="transition-all duration-300 focus:ring-2 focus:ring-blue-500"
+                    className="text-gray-800 bg-white border-gray-300"
                   />
                   <Input
                     id="lastName"
@@ -256,7 +256,7 @@ const RegisterPage = () => {
                     onChange={handleChange}
                     onBlur={handleBlur}
                     error={validationMessages.lastName}
-                    className="transition-all duration-300 focus:ring-2 focus:ring-blue-500"
+                    className="text-gray-800 bg-white border-gray-300"
                   />
                 </div>
 
@@ -269,20 +269,36 @@ const RegisterPage = () => {
                     value={formData.dateOfBirth}
                     onChange={handleChange}
                     onBlur={handleBlur}
-                    className="transition-all duration-300 focus:ring-2 focus:ring-blue-500"
+                    className="text-gray-800 bg-white border-gray-300"
                   />
-                  <Input
-                    id="academicYear"
-                    name="academicYear"
-                    type="number"
-                    label="Academic Year"
-                    min="1"
-                    max="7"
-                    value={formData.academicYear}
-                    onChange={handleChange}
-                    onBlur={handleBlur}
-                    className="transition-all duration-300 focus:ring-2 focus:ring-blue-500"
-                  />
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Academic Year
+                    </label>
+                    <div className="relative">
+                      <select
+                        id="academicYear"
+                        name="academicYear"
+                        value={formData.academicYear}
+                        onChange={handleChange}
+                        className="w-full px-4 py-2 border border-gray-300 rounded-md text-gray-800 bg-white appearance-none"
+                      >
+                        <option value="">Select</option>
+                        <option value="1">1st Year</option>
+                        <option value="2">2nd Year</option>
+                        <option value="3">3rd Year</option>
+                        <option value="4">4th Year</option>
+                        <option value="5">5th Year</option>
+                        <option value="6">6th Year</option>
+                        <option value="7">7th Year</option>
+                      </select>
+                      <div className="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none">
+                        <svg className="h-5 w-5 text-gray-400" viewBox="0 0 20 20" fill="currentColor">
+                          <path fillRule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clipRule="evenodd" />
+                        </svg>
+                      </div>
+                    </div>
+                  </div>
                 </div>
               </div>
             </div>
@@ -318,7 +334,7 @@ const RegisterPage = () => {
                   onChange={handleChange}
                   onBlur={handleBlur}
                   error={validationMessages.email}
-                  className="transition-all duration-300 focus:ring-2 focus:ring-blue-500"
+                  className="text-gray-800 bg-white border-gray-300"
                 />
 
                 <Input
@@ -331,7 +347,7 @@ const RegisterPage = () => {
                   onChange={handleChange}
                   onBlur={handleBlur}
                   error={validationMessages.username}
-                  className="transition-all duration-300 focus:ring-2 focus:ring-blue-500"
+                  className="text-gray-800 bg-white border-gray-300"
                 />
 
                 <div>
@@ -345,7 +361,7 @@ const RegisterPage = () => {
                     onChange={handleChange}
                     onBlur={handleBlur}
                     error={validationMessages.password}
-                    className="transition-all duration-300 focus:ring-2 focus:ring-blue-500"
+                    className="text-gray-800 bg-white border-gray-300"
                   />
                   {formData.password && (
                     <div className="mt-2">
@@ -387,7 +403,7 @@ const RegisterPage = () => {
                   onChange={handleChange}
                   onBlur={handleBlur}
                   error={validationMessages.password2}
-                  className="transition-all duration-300 focus:ring-2 focus:ring-blue-500"
+                  className="text-gray-800 bg-white border-gray-300"
                 />
               </div>
             </div>
@@ -401,7 +417,7 @@ const RegisterPage = () => {
                   type="checkbox"
                   checked={agreeToTerms}
                   onChange={() => setAgreeToTerms(!agreeToTerms)}
-                  className="h-4 w-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+                  className="h-4 w-4 text-blue-600 border-gray-300 rounded"
                 />
               </div>
               <div className="ml-3 text-sm">
@@ -424,15 +440,21 @@ const RegisterPage = () => {
               </div>
             </div>
 
-            <Button
+            <button
               type="submit"
-              fullWidth
-              isLoading={isLoading}
-              disabled={!agreeToTerms}
-              className="w-full py-3 text-lg font-medium transition-all duration-300 transform hover:scale-[1.02] hover:shadow-lg disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100 disabled:hover:shadow-none"
+              disabled={isLoading || !agreeToTerms}
+              className="w-full py-3 text-white font-medium bg-blue-600 hover:bg-blue-700 rounded-md transition-colors duration-300 outline-none focus:outline-none active:outline-none"
+              style={{ 
+                outline: 'none', 
+                boxShadow: 'none',
+                border: 'none',
+                WebkitTapHighlightColor: 'transparent',
+                WebkitAppearance: 'none',
+                MozAppearance: 'none'
+              }}
             >
-              Create Account
-            </Button>
+              {isLoading ? "Creating Account..." : "Create Account"}
+            </button>
 
             <div className="text-center">
               <p className="text-sm text-gray-600">

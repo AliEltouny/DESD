@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import { testimonialApi, getMediaUrl } from "@/services/api";
+import { testimonialApi, getMediaUrl } from "@/services";
 
 // Define the Testimonial interface
 interface Testimonial {
@@ -60,9 +60,10 @@ const TestimonialsSection = () => {
         const response = await testimonialApi.getTestimonials();
         console.log("Testimonials API response:", response);
         
-        if (response && response.length > 0) {
+        // Check if we have results from the API response
+        if (response && response.results && response.results.length > 0) {
           // Process testimonials to ensure proper image URLs
-          const processedTestimonials = response.map(
+          const processedTestimonials = response.results.map(
             (testimonial: any) => {
               // Ensure all image URLs use localhost instead of backend container name
               let imageUrl = testimonial.image_url || testimonial.image;

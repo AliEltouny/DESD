@@ -3,6 +3,9 @@ import string
 from django.core.cache import cache
 from django.core.mail import send_mail
 from django.conf import settings
+from django.contrib.auth.tokens import default_token_generator
+from django.utils.http import urlsafe_base64_encode
+from django.utils.encoding import force_bytes
 
 
 def generate_otp(length=6):
@@ -39,5 +42,26 @@ def send_otp_email(email, otp):
         message=message,
         from_email=settings.DEFAULT_FROM_EMAIL,
         recipient_list=[email],
+        fail_silently=False,
+    )
+
+
+def generate_password_reset_token(user):
+    """Generate password reset token for a user"""
+    uid = urlsafe_base64_encode(force_bytes(user.pk))
+    token = default_token_generator.make_token(user)
+    return {'uid': uid, 'token': token}
+
+
+def send_password_reset_email(user, reset_url):
+    """Send password reset link to user's email"""
+    subject = 'Uni Hub - Reset Your Password'
+    message = f'Click the link below to reset your password:\n\n{reset_url}\n\nThis link is valid for 24 hours.'
+    
+    return send_mail(
+        subject=subject,
+        message=message,
+        from_email=settings.DEFAULT_FROM_EMAIL,
+        recipient_list=[user.email],
         fail_silently=False,
     ) 

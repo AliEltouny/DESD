@@ -135,10 +135,13 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     // Check if user is authenticated on initial load
     const checkAuth = async () => {
       const accessToken = getCookie("accessToken");
-      const userJSON = localStorage.getItem("user");
+      const userJSONFromLocal = localStorage.getItem("user");
+      const userJSONFromSession = sessionStorage.getItem("user");
+      const userJSON = userJSONFromLocal || userJSONFromSession;
 
       console.log("Initial auth check - token present:", !!accessToken);
       console.log("Initial auth check - user data present:", !!userJSON);
+      console.log("Initial auth check - remember me enabled:", !!userJSONFromLocal);
 
       if (accessToken) {
         try {
@@ -179,7 +182,14 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
                   console.log("Fetching user profile after token refresh...");
                   const profileResponse = await api.get("/profile");
                   const userData = profileResponse.data;
-                  localStorage.setItem("user", JSON.stringify(userData));
+                  
+                  // Store in appropriate storage based on if we originally had localStorage data
+                  if (userJSONFromLocal) {
+                    localStorage.setItem("user", JSON.stringify(userData));
+                  } else {
+                    sessionStorage.setItem("user", JSON.stringify(userData));
+                  }
+                  
                   setUser(userData);
                 }
               } catch (refreshError) {
@@ -190,10 +200,10 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
               throw new Error("No refresh token available");
             }
           } else if (userJSON) {
-            // Token is valid, set user from local storage
+            // Token is valid, set user from storage
             const userData = JSON.parse(userJSON);
             setUser(userData);
-            console.log("User set from localStorage:", userData);
+            console.log("User set from storage:", userData);
             api.defaults.headers.common.Authorization = `Bearer ${accessToken}`;
           } else {
             // Token valid but no user data, fetch profile
@@ -201,7 +211,9 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
               console.log("Token valid, fetching user profile...");
               const profileResponse = await api.get("/profile");
               const userData = profileResponse.data;
-              localStorage.setItem("user", JSON.stringify(userData));
+              
+              // Default to session storage if we don't know the preference
+              sessionStorage.setItem("user", JSON.stringify(userData));
               setUser(userData);
             } catch (profileError) {
               console.error("Failed to fetch profile:", profileError);
@@ -216,6 +228,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
           document.cookie =
             "refreshToken=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT";
           localStorage.removeItem("user");
+          sessionStorage.removeItem("user");
         }
       }
 
@@ -228,7 +241,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const login = async (
     email: string,
     password: string,
-    rememberMe?: boolean
+    rememberMe: boolean = false
   ) => {
     setIsLoading(true);
     try {
@@ -236,6 +249,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       const { access, refresh, user: userData } = response.data;
 
       console.log("Login successful, got tokens:", !!access, !!refresh);
+      console.log("Remember me enabled:", rememberMe);
       
       // Set tokens in cookies with appropriate expiration
       const cookieOptions = rememberMe
@@ -246,7 +260,16 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       document.cookie = `refreshToken=${refresh}${cookieOptions}`;
 
       // Set user data
-      localStorage.setItem("user", JSON.stringify(userData));
+      if (rememberMe) {
+        // If remember me is enabled, store user data in localStorage
+        localStorage.setItem("user", JSON.stringify(userData));
+      } else {
+        // If remember me is not enabled, store user data in sessionStorage (cleared when browser is closed)
+        sessionStorage.setItem("user", JSON.stringify(userData));
+        // Clear localStorage in case it was set previously
+        localStorage.removeItem("user");
+      }
+      
       setUser(userData);
 
       // Update API headers
@@ -254,6 +277,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       
       // Log cookies for debugging
       console.log("Cookies after login:", document.cookie.split(';').map(c => c.trim().substring(0, 15) + '...'));
+      console.log("Remember me is:", rememberMe ? "enabled" : "disabled");
 
       // Redirect with a slight delay to ensure everything is set
       console.log("Login successful, redirecting to dashboard...");
@@ -274,7 +298,10 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       "accessToken=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT";
     document.cookie =
       "refreshToken=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT";
+    
+    // Clear user data from both storages
     localStorage.removeItem("user");
+    sessionStorage.removeItem("user");
 
     setUser(null);
     delete api.defaults.headers.common.Authorization;

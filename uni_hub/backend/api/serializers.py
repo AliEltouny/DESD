@@ -16,7 +16,8 @@ class TestimonialSerializer(serializers.ModelSerializer):
         if not obj.image:
             return None
             
-        # Always use localhost:8000 regardless of the request host
+        # Make sure the URL works both from browser and within containers
+        # The frontend will handle URL conversion if needed
         return f"http://localhost:8000{obj.image.url}"
     
     class Meta:

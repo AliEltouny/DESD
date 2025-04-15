@@ -198,6 +198,9 @@ CORS_ALLOWED_ORIGINS = [
     "http://127.0.0.1:3000",
 ]
 
+# Frontend URL for password reset links
+FRONTEND_URL = os.environ.get('FRONTEND_URL', 'http://localhost:3000')
+
 # Allow all origins for development purposes
 CORS_ALLOW_ALL_ORIGINS = True
 

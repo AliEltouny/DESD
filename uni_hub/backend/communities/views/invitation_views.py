@@ -129,4 +129,110 @@ class CommunityInvitationViewSet(
             return Response(
                 {"detail": msg},
                 status=status.HTTP_400_BAD_REQUEST
+            )
+
+class InvitationViews:
+    """
+    This class contains view methods related to community invitations
+    that will be added to the CommunityViewSet
+    """
+    
+    @extend_schema(
+        summary="Invite User",
+        description="Invite a user to join the community via email.",
+        request=CommunityInvitationSerializer,
+        responses={201: None, 207: None},
+    )
+    @action(detail=True, methods=['post'], permission_classes=[IsAuthenticated, IsCommunityAdminOrReadOnly])
+    def invite(self, request, slug=None):
+        """Invite a user to join the community"""
+        community = self.get_object()
+        
+        serializer = CommunityInvitationSerializer(data=request.data, context={'request': request})
+        if serializer.is_valid():
+            success, message = CommunityService.invite_to_community(
+                inviter=request.user,
+                community=community,
+                invitee_email=serializer.validated_data['invitee_email'],
+                message=serializer.validated_data.get('message', ''),
+                request=request
+            )
+            
+            if success:
+                return Response(
+                    {"detail": message},
+                    status=status.HTTP_201_CREATED
+                )
+            else:
+                return Response(
+                    {"detail": message},
+                    status=status.HTTP_207_MULTI_STATUS
+                )
+        
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        
+    @extend_schema(
+        summary="List Community Invitations",
+        description="Get a list of pending invitations for a community.",
+    )
+    @action(detail=True, methods=['get'], permission_classes=[IsAuthenticated, IsCommunityAdminOrReadOnly])
+    def invitations(self, request, slug=None):
+        """Get list of pending invitations for a community"""
+        community = self.get_object()
+        
+        # Get all pending invitations for this community
+        invitations = CommunityInvitation.objects.filter(
+            community=community,
+            status='pending'
+        ).select_related('inviter')
+        
+        serializer = CommunityInvitationSerializer(invitations, many=True, context={'request': request})
+        return Response(serializer.data)
+        
+    @extend_schema(
+        summary="Cancel Invitation",
+        description="Cancel a pending invitation.",
+        request={
+            'application/json': {
+                'type': 'object',
+                'properties': {
+                    'invitation_id': {'type': 'integer'},
+                },
+                'required': ['invitation_id'],
+            }
+        },
+        responses={200: None, 404: None},
+    )
+    @action(detail=True, methods=['post'], permission_classes=[IsAuthenticated, IsCommunityAdminOrReadOnly])
+    def cancel_invitation(self, request, slug=None):
+        """Cancel a pending invitation"""
+        community = self.get_object()
+        invitation_id = request.data.get('invitation_id')
+        
+        if not invitation_id:
+            return Response(
+                {"detail": "Invitation ID is required."},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        try:
+            # Ensure the invitation belongs to this community and is pending
+            invitation = CommunityInvitation.objects.get(
+                id=invitation_id,
+                community=community,
+                status='pending'
+            )
+            
+            # Cancel the invitation
+            invitation.status = 'cancelled'
+            invitation.save()
+            
+            return Response(
+                {"detail": "Invitation cancelled successfully."},
+                status=status.HTTP_200_OK
+            )
+        except CommunityInvitation.DoesNotExist:
+            return Response(
+                {"detail": "Invitation not found or already processed."},
+                status=status.HTTP_404_NOT_FOUND
             ) 

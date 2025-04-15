@@ -1,0 +1,104 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Direct CSS overrides - will take precedence over Tailwind */
+button, 
+button:focus, 
+button:active,
+button:hover,
+a[role="button"],
+a[role="button"]:focus,
+[type="button"],
+[type="submit"],
+[type="reset"],
+.btn,
+input[type="checkbox"] {
+  outline: 0 !important;
+  outline-style: none !important;
+  outline-width: 0 !important;
+  outline-color: transparent !important;
+  border-color: transparent !important;
+  box-shadow: none !important;
+  -webkit-appearance: none !important;
+  -moz-appearance: none !important;
+  appearance: none !important;
+  -webkit-box-shadow: none !important;
+  -moz-box-shadow: none !important;
+  border-style: solid !important;
+}
+
+/* Specific focus state override */
+button:focus-visible {
+  outline: 0 !important; 
+  outline-offset: 0 !important;
+  box-shadow: none !important;
+}
+
+/* Firefox specific */
+button::-moz-focus-inner {
+  border: 0 !important;
+  outline: 0 !important;
+}
+
+/* Kill all focus styles at root level */
+:root {
+  --tw-ring-inset: none !important;
+  --tw-ring-offset-width: 0 !important;
+  --tw-ring-offset-color: transparent !important;
+  --tw-ring-color: transparent !important;
+  --tw-ring-offset-shadow: none !important;
+  --tw-ring-shadow: none !important;
+  --tw-shadow: none !important;
+}
+
+/* Aggressive global reset */
+*, *::before, *::after {
+  outline: none !important;
+  box-shadow: none !important;
+}
+
+/* Override any browser or Tailwind focus styles */
+*:focus,
+*:active,
+*:hover {
+  outline: none !important;
+  box-shadow: none !important;
+  outline-width: 0 !important;
+  outline-style: none !important;
+  outline-color: transparent !important;
+  box-shadow: none !important;
+  --tw-ring-offset-shadow: none !important;
+  --tw-ring-shadow: none !important;
+  --tw-shadow: none !important;
+}
+
+/* Direct button fixes */
+button {
+  outline: none !important;
+  border-color: transparent !important;
+}
+
+button:focus {
+  outline: none !important;
+  box-shadow: none !important;
+  outline-offset: 0 !important;
+}
+
+/* Remove tailwind ring styles */
+.ring-0 {
+  --tw-ring-offset-shadow: none !important;
+  --tw-ring-shadow: none !important;
+  box-shadow: none !important;
+}
+
+/* Select dropdown styles */
+select {
+  -webkit-appearance: none;
+  appearance: none;
+  background-image: url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%23616161' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 0.5rem center;
+  background-size: 1em;
+  padding-right: 2rem;
+} 

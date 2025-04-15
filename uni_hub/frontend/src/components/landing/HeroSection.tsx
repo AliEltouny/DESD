@@ -6,19 +6,8 @@ import { motion } from "framer-motion";
 const HeroSection = () => {
   return (
     <div className="relative overflow-hidden">
-      {/* Background Image */}
-      <div className="absolute inset-0 z-0">
-        <div
-          className="w-full h-full bg-cover bg-center"
-          style={{
-            backgroundImage: "url('/images/hero-students.jpg')",
-            filter: "brightness(0.7)",
-          }}
-        />
-      </div>
-
-      {/* Gradient Overlay */}
-      <div className="absolute inset-0 bg-gradient-to-r from-blue-900/80 to-purple-900/70 z-10"></div>
+      {/* Gradient Background */}
+      <div className="absolute inset-0 bg-gradient-to-r from-blue-900/90 to-purple-900/80 z-0"></div>
 
       {/* Content */}
       <div className="relative z-20 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-24 md:py-32 lg:py-40">

@@ -11,21 +11,15 @@ interface InputProps extends InputHTMLAttributes<HTMLInputElement> {
 
 const Input = forwardRef<HTMLInputElement, InputProps>(
   ({ label, error, className = "", fullWidth = true, ...props }, ref) => {
-    const baseClasses =
-      "block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm transition-all duration-300";
-    const errorClasses =
-      "border-red-300 text-red-900 placeholder-red-300 focus:border-red-500 focus:ring-red-500";
-    const validClasses =
-      "border-green-300 focus:border-green-500 focus:ring-green-500";
-
-    const inputClasses = `
-      ${baseClasses}
-      ${
-        error ? errorClasses : props.value && props.required ? validClasses : ""
-      }
-      ${fullWidth ? "w-full" : ""}
-      ${className}
-    `;
+    const baseClasses = `w-full px-4 py-2 border rounded-md text-gray-800 bg-white ${
+      fullWidth ? "w-full" : ""
+    } ${className} ${
+      error
+        ? "border-red-300 text-red-900 placeholder-red-300"
+        : props.value && props.required
+        ? "border-green-300"
+        : "border-gray-300"
+    } focus:outline-none focus:ring-0 focus:shadow-none`;
 
     return (
       <div className={fullWidth ? "w-full" : ""}>
@@ -39,7 +33,7 @@ const Input = forwardRef<HTMLInputElement, InputProps>(
           </label>
         )}
         <div className="relative">
-          <input ref={ref} className={inputClasses} {...props} />
+          <input ref={ref} className={baseClasses} {...props} />
 
           {/* Valid indicator */}
           {props.value && props.required && !error && (

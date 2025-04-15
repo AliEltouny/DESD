@@ -4,6 +4,7 @@ import React, { useState, useEffect } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import CommunityList from "@/components/communities/CommunityList";
 import Link from "next/link";
+import DashboardLayout from "@/components/layouts/DashboardLayout";
 
 export default function CommunitiesPage() {
   const { isAuthenticated } = useAuth();
@@ -17,7 +18,7 @@ export default function CommunitiesPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 py-8">
+    <DashboardLayout>
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex justify-between items-center mb-8">
           <h1 className="text-3xl font-bold text-gray-900">Communities</h1>
@@ -117,6 +118,6 @@ export default function CommunitiesPage() {
           </div>
         )}
       </div>
-    </div>
+    </DashboardLayout>
   );
 }

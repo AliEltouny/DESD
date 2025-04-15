@@ -17,9 +17,18 @@ from users.serializers import (
     UserRegistrationSerializer,
     OTPVerificationSerializer,
     UserLoginSerializer,
-    UserProfileSerializer
+    UserProfileSerializer,
+    PasswordResetRequestSerializer,
+    PasswordResetConfirmSerializer
 )
-from users.utils import generate_otp, save_otp, verify_otp, send_otp_email
+from users.utils import (
+    generate_otp, 
+    save_otp, 
+    verify_otp, 
+    send_otp_email,
+    generate_password_reset_token,
+    send_password_reset_email
+)
 
 # Import the Testimonial model and serializer
 from .models import Testimonial
@@ -147,9 +156,84 @@ class TestimonialViewSet(viewsets.ReadOnlyModelViewSet):
     serializer_class = TestimonialSerializer
     permission_classes = [AllowAny]  # Allow public access to testimonials
     
+    def list(self, request, *args, **kwargs):
+        """Override list method to add debugging"""
+        print(f"TestimonialViewSet: Total active testimonials: {self.queryset.count()}")
+        print(f"TestimonialViewSet: All testimonials: {Testimonial.objects.all().count()}")
+        
+        # Get the queryset and serialize it
+        queryset = self.filter_queryset(self.get_queryset())
+        serializer = self.get_serializer(queryset, many=True)
+        
+        # Print the serialized data for debugging
+        print(f"TestimonialViewSet: Serialized data: {serializer.data}")
+        
+        # Standard response format
+        return Response({
+            'count': queryset.count(),
+            'next': None,
+            'previous': None,
+            'results': serializer.data
+        })
+    
     def get_serializer_context(self):
         """
         Extra context provided to the serializer class.
         """
         context = super().get_serializer_context()
         return context
+
+
+@api_view(['POST'])
+@permission_classes([AllowAny])
+def password_reset_request(request):
+    """
+    Request a password reset link to be sent to the user's email.
+    """
+    serializer = PasswordResetRequestSerializer(data=request.data)
+    if serializer.is_valid():
+        email = serializer.validated_data['email']
+        try:
+            user = User.objects.get(email=email)
+            
+            # Generate reset token
+            token_data = generate_password_reset_token(user)
+            
+            # Create reset URL for frontend
+            reset_url = f"{settings.FRONTEND_URL}/reset-password?uid={token_data['uid']}&token={token_data['token']}"
+            
+            # Send email with reset link
+            send_password_reset_email(user, reset_url)
+            
+            return Response({
+                'message': 'Password reset link has been sent to your email.'
+            }, status=status.HTTP_200_OK)
+        except User.DoesNotExist:
+            # We return 200 even if the user doesn't exist for security reasons
+            return Response({
+                'message': 'Password reset link has been sent to your email.'
+            }, status=status.HTTP_200_OK)
+    
+    return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+
+@api_view(['POST'])
+@permission_classes([AllowAny])
+def password_reset_confirm(request):
+    """
+    Confirm a password reset by validating token and setting new password.
+    """
+    serializer = PasswordResetConfirmSerializer(data=request.data)
+    if serializer.is_valid():
+        user = serializer.validated_data['user']
+        new_password = serializer.validated_data['new_password']
+        
+        # Set new password
+        user.set_password(new_password)
+        user.save()
+        
+        return Response({
+            'message': 'Password has been reset successfully.'
+        }, status=status.HTTP_200_OK)
+    
+    return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)

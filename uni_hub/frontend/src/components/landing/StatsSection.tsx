@@ -1,14 +1,15 @@
 "use client";
 
 import React, { useState, useEffect, useRef } from "react";
+import { motion } from "framer-motion";
 
 const StatsSection = () => {
   // Stats data
   const stats = [
-    { label: "Active Students", value: 5000, suffix: "+ ", prefix: "" },
-    { label: "Universities", value: 120, suffix: "+", prefix: "" },
-    { label: "Communities", value: 350, suffix: "+", prefix: "" },
-    { label: "Events per Month", value: 200, suffix: "+", prefix: "" },
+    { label: "Active Students", value: 334, suffix: "+", prefix: "", color: "from-blue-500/90 to-blue-700/80" },
+    { label: "Universities", value: 8, suffix: "+", prefix: "", color: "from-indigo-500/90 to-indigo-700/80" },
+    { label: "Communities", value: 24, suffix: "+", prefix: "", color: "from-purple-500/90 to-purple-700/80" },
+    { label: "Events per Month", value: 14, suffix: "+", prefix: "", color: "from-blue-600/90 to-purple-600/80" },
   ];
 
   // State to track if section is in view for animation
@@ -68,99 +69,141 @@ const StatsSection = () => {
     };
   }, [isInView, stats]);
 
+  // Animation variants for staggered animations
+  const containerVariants = {
+    hidden: { opacity: 0 },
+    visible: {
+      opacity: 1,
+      transition: {
+        staggerChildren: 0.2
+      }
+    }
+  };
+
+  const itemVariants = {
+    hidden: { opacity: 0, y: 20 },
+    visible: { 
+      opacity: 1, 
+      y: 0,
+      transition: {
+        duration: 0.7,
+        ease: "easeOut"
+      }
+    }
+  };
+
   return (
     <section
       ref={sectionRef}
-      className="py-20 bg-gradient-to-r from-blue-600 to-blue-800 text-white"
+      className="py-24 bg-gradient-to-r from-blue-900/90 to-purple-900/80 text-white relative overflow-hidden"
     >
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="text-center mb-16">
-          <h2 className="text-3xl font-extrabold tracking-tight sm:text-4xl">
+      {/* Background decorative elements */}
+      <div className="absolute top-0 left-0 w-full h-8 bg-white/5" style={{ backdropFilter: 'blur(40px)' }}></div>
+      <div className="absolute bottom-0 left-0 w-full h-8 bg-white/5" style={{ backdropFilter: 'blur(40px)' }}></div>
+      <div className="absolute -top-24 -right-24 w-48 h-48 rounded-full bg-purple-500/20 blur-3xl"></div>
+      <div className="absolute -bottom-24 -left-24 w-48 h-48 rounded-full bg-blue-500/20 blur-3xl"></div>
+      
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
+        <motion.div 
+          initial={{ opacity: 0, y: 20 }}
+          animate={isInView ? { opacity: 1, y: 0 } : { opacity: 0, y: 20 }}
+          transition={{ duration: 0.8 }}
+          className="text-center mb-20"
+        >
+          <h2 className="text-4xl font-extrabold tracking-tight sm:text-5xl bg-clip-text text-transparent bg-gradient-to-r from-white to-blue-200">
             Uni Hub by the Numbers
           </h2>
-          <p className="mt-4 max-w-2xl mx-auto text-xl text-blue-100">
+          <p className="mt-6 max-w-2xl mx-auto text-xl text-blue-100 leading-relaxed">
             Join thousands of students already connecting and collaborating on
             our platform.
           </p>
-        </div>
+        </motion.div>
 
-        <div className="grid grid-cols-2 gap-8 md:grid-cols-4">
+        <motion.div 
+          variants={containerVariants}
+          initial="hidden"
+          animate={isInView ? "visible" : "hidden"}
+          className="grid grid-cols-2 gap-8 md:grid-cols-4"
+        >
           {stats.map((stat, index) => (
-            <div key={index} className="text-center">
-              <div className="relative">
-                <div className="absolute inset-0 flex items-center justify-center">
-                  <div className="w-32 h-32 rounded-full border-4 border-blue-300/30"></div>
-                </div>
-                <div className="relative bg-blue-700/50 rounded-xl p-6 backdrop-blur-sm">
-                  <p className="text-5xl font-bold text-white flex justify-center items-center">
+            <motion.div key={index} variants={itemVariants} className="text-center">
+              <div className="transform transition-all duration-300 hover:scale-105">
+                <div className={`relative rounded-2xl bg-gradient-to-br ${stat.color} p-6 shadow-lg backdrop-blur-sm ring-1 ring-white/10`}>
+                  <div className="absolute inset-0 bg-blue-500/5 rounded-2xl backdrop-blur-sm"></div>
+                  <p className="relative text-5xl font-bold text-white flex justify-center items-center">
                     <span>{stat.prefix}</span>
-                    <span>{counters[index]}</span>
+                    <span className="tabular-nums">{counters[index]}</span>
                     <span>{stat.suffix}</span>
                   </p>
-                  <p className="mt-2 text-lg font-medium text-blue-100">
+                  <p className="relative mt-2 text-lg font-medium text-blue-100">
                     {stat.label}
                   </p>
                 </div>
               </div>
-            </div>
+            </motion.div>
           ))}
-        </div>
+        </motion.div>
 
-        <div className="mt-16 grid grid-cols-1 md:grid-cols-3 gap-8">
-          <div className="bg-white/10 backdrop-blur-sm rounded-lg p-6">
-            <h3 className="text-xl font-bold text-white mb-2">
+        <motion.div 
+          variants={containerVariants}
+          initial="hidden"
+          animate={isInView ? "visible" : "hidden"}
+          className="mt-20 grid grid-cols-1 md:grid-cols-3 gap-8"
+        >
+          <motion.div variants={itemVariants} className="bg-white/10 backdrop-blur-lg rounded-xl p-8 shadow-xl border border-white/10 transform transition-all duration-300 hover:translate-y-[-5px]">
+            <h3 className="text-2xl font-bold text-white mb-4">
               Student Satisfaction
             </h3>
-            <div className="flex items-center mt-2">
-              <div className="w-full bg-blue-200/20 rounded-full h-2.5">
+            <div className="flex items-center mt-4">
+              <div className="w-full bg-blue-900/40 rounded-full h-3 overflow-hidden">
                 <div
-                  className="bg-white h-2.5 rounded-full"
-                  style={{ width: "94%" }}
+                  className="bg-gradient-to-r from-blue-300 to-blue-500 h-3 rounded-full"
+                  style={{ width: isInView ? "94%" : "0%", transition: "width 1.5s ease-out" }}
                 ></div>
               </div>
-              <span className="ml-2 text-white font-bold">94%</span>
+              <span className="ml-3 text-white font-bold text-lg">94%</span>
             </div>
-            <p className="mt-4 text-blue-100">
+            <p className="mt-5 text-blue-100 text-lg">
               Students reporting improved university experience.
             </p>
-          </div>
+          </motion.div>
 
-          <div className="bg-white/10 backdrop-blur-sm rounded-lg p-6">
-            <h3 className="text-xl font-bold text-white mb-2">
+          <motion.div variants={itemVariants} className="bg-white/10 backdrop-blur-lg rounded-xl p-8 shadow-xl border border-white/10 transform transition-all duration-300 hover:translate-y-[-5px]">
+            <h3 className="text-2xl font-bold text-white mb-4">
               Event Attendance
             </h3>
-            <div className="flex items-center mt-2">
-              <div className="w-full bg-blue-200/20 rounded-full h-2.5">
+            <div className="flex items-center mt-4">
+              <div className="w-full bg-blue-900/40 rounded-full h-3 overflow-hidden">
                 <div
-                  className="bg-white h-2.5 rounded-full"
-                  style={{ width: "78%" }}
+                  className="bg-gradient-to-r from-indigo-300 to-indigo-500 h-3 rounded-full"
+                  style={{ width: isInView ? "78%" : "0%", transition: "width 1.5s ease-out" }}
                 ></div>
               </div>
-              <span className="ml-2 text-white font-bold">78%</span>
+              <span className="ml-3 text-white font-bold text-lg">78%</span>
             </div>
-            <p className="mt-4 text-blue-100">
+            <p className="mt-5 text-blue-100 text-lg">
               Increase in student participation at campus events.
             </p>
-          </div>
+          </motion.div>
 
-          <div className="bg-white/10 backdrop-blur-sm rounded-lg p-6">
-            <h3 className="text-xl font-bold text-white mb-2">
+          <motion.div variants={itemVariants} className="bg-white/10 backdrop-blur-lg rounded-xl p-8 shadow-xl border border-white/10 transform transition-all duration-300 hover:translate-y-[-5px]">
+            <h3 className="text-2xl font-bold text-white mb-4">
               Networking Success
             </h3>
-            <div className="flex items-center mt-2">
-              <div className="w-full bg-blue-200/20 rounded-full h-2.5">
+            <div className="flex items-center mt-4">
+              <div className="w-full bg-blue-900/40 rounded-full h-3 overflow-hidden">
                 <div
-                  className="bg-white h-2.5 rounded-full"
-                  style={{ width: "85%" }}
+                  className="bg-gradient-to-r from-purple-300 to-purple-500 h-3 rounded-full"
+                  style={{ width: isInView ? "85%" : "0%", transition: "width 1.5s ease-out" }}
                 ></div>
               </div>
-              <span className="ml-2 text-white font-bold">85%</span>
+              <span className="ml-3 text-white font-bold text-lg">85%</span>
             </div>
-            <p className="mt-4 text-blue-100">
+            <p className="mt-5 text-blue-100 text-lg">
               Students making valuable connections for their careers.
             </p>
-          </div>
-        </div>
+          </motion.div>
+        </motion.div>
       </div>
     </section>
   );

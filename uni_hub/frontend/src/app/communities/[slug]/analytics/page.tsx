@@ -18,19 +18,30 @@ export default function CommunityAnalyticsPage() {
   const [isAdmin, setIsAdmin] = useState(false);
 
   useEffect(() => {
+    // Don't do anything until auth state is fully initialized
+    if (typeof isAuthenticated === 'undefined') {
+      console.log("Auth state still initializing...");
+      return; // Wait for auth state to be determined
+    }
+    
     const fetchData = async () => {
-      if (!isAuthenticated) {
-        router.push(`/login?redirect=/communities/${slug}/analytics`);
-        return;
-      }
-
       try {
         setLoading(true);
-        // Fetch community data first to check permissions
+        setError(null);
+        
+        // Only redirect if we're sure authentication has completed and user is not authenticated
+        if (isAuthenticated === false) {
+          console.log("User not authenticated, redirecting to login");
+          router.replace(`/login?redirect=/communities/${slug}/analytics`);
+          return;
+        }
+        
+        // Fetch community data first
+        console.log("Fetching community data for", slug);
         const communityData = await getCommunity(slug as string);
         setCommunity(communityData);
         
-        // Check if user is admin or creator
+        // Check permissions
         const userIsAdmin = communityData.membership_role === 'admin' || 
                           (communityData.creator?.id === user?.id);
         
@@ -43,18 +54,22 @@ export default function CommunityAnalyticsPage() {
         }
         
         // Fetch analytics data
+        console.log("Fetching analytics data");
         const analyticsData = await getCommunityAnalytics(slug as string);
         setAnalytics(analyticsData);
       } catch (err) {
-        console.error('Failed to load analytics data:', err);
-        setError('Failed to load analytics data. Please try again later.');
+        console.error('Failed to load data:', err);
+        setError('Failed to load community data. The community may not exist or has been deleted.');
       } finally {
         setLoading(false);
       }
     };
-
-    fetchData();
-  }, [slug, isAuthenticated, user?.id, router]);
+    
+    // Only fetch data if we have a slug and user is authenticated
+    if (slug && isAuthenticated) {
+      fetchData();
+    }
+  }, [slug, isAuthenticated, user, router]);
 
   if (loading) {
     return (
@@ -230,17 +245,18 @@ export default function CommunityAnalyticsPage() {
           <div className="bg-white rounded-lg shadow-sm p-6">
             <h2 className="text-xl font-semibold text-gray-900 mb-4">Member Growth</h2>
             {analytics?.member_growth?.daily?.length > 0 ? (
-              <div className="h-64 flex items-end">
+              <div className="h-64 flex items-end space-x-1">
                 {analytics.member_growth.daily.map((day: any, i: number) => (
                   <div key={i} className="flex-1 flex flex-col items-center">
                     <div 
-                      className="w-full bg-blue-500 hover:bg-blue-600 transition-colors"
+                      className="w-full bg-blue-500 hover:bg-blue-600 transition-colors rounded-t-sm"
                       style={{ 
-                        height: `${Math.max(15, (day.count / Math.max(...analytics.member_growth.daily.map((d: any) => d.count), 1)) * 100)}%`
+                        height: `${Math.max(20, (day.count / Math.max(...analytics.member_growth.daily.map((d: any) => d.count), 1)) * 100)}%`,
+                        minHeight: day.count > 0 ? '20px' : '2px'
                       }}
                     ></div>
-                    <div className="text-xs text-gray-500 mt-1 transform -rotate-45 origin-top-left">
-                      {new Date(day.day).toLocaleDateString(undefined, {month: 'short', day: 'numeric'})}
+                    <div className="text-xs text-gray-500 mt-2 transform -rotate-45 origin-top-left truncate w-10 overflow-hidden">
+                      {new Date(day.day).toLocaleDateString(undefined, {day: 'numeric', month: 'short'})}
                     </div>
                   </div>
                 ))}
@@ -255,18 +271,19 @@ export default function CommunityAnalyticsPage() {
           {/* Post Activity */}
           <div className="bg-white rounded-lg shadow-sm p-6">
             <h2 className="text-xl font-semibold text-gray-900 mb-4">Post Activity</h2>
-            {analytics?.post_activity?.length > 0 ? (
-              <div className="h-64 flex items-end">
-                {analytics.post_activity.map((day: any, i: number) => (
+            {analytics?.post_activity?.daily?.length > 0 ? (
+              <div className="h-64 flex items-end space-x-1">
+                {analytics.post_activity.daily.map((day: any, i: number) => (
                   <div key={i} className="flex-1 flex flex-col items-center">
                     <div 
-                      className="w-full bg-green-500 hover:bg-green-600 transition-colors"
+                      className="w-full bg-green-500 hover:bg-green-600 transition-colors rounded-t-sm"
                       style={{ 
-                        height: `${Math.max(15, (day.count / Math.max(...analytics.post_activity.map((d: any) => d.count), 1)) * 100)}%`
+                        height: `${Math.max(20, (day.count / Math.max(...analytics.post_activity.daily.map((d: any) => d.count), 1)) * 100)}%`,
+                        minHeight: day.count > 0 ? '20px' : '2px'
                       }}
                     ></div>
-                    <div className="text-xs text-gray-500 mt-1 transform -rotate-45 origin-top-left">
-                      {new Date(day.day).toLocaleDateString(undefined, {month: 'short', day: 'numeric'})}
+                    <div className="text-xs text-gray-500 mt-2 transform -rotate-45 origin-top-left truncate w-10 overflow-hidden">
+                      {new Date(day.day).toLocaleDateString(undefined, {day: 'numeric', month: 'short'})}
                     </div>
                   </div>
                 ))}
@@ -304,12 +321,12 @@ export default function CommunityAnalyticsPage() {
                 </thead>
                 <tbody className="bg-white divide-y divide-gray-200">
                   {analytics.top_contributors.map((contributor: any, index: number) => (
-                    <tr key={contributor.author_id}>
+                    <tr key={contributor.author_id || index}>
                       <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
                         {index + 1}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                        {contributor.username}
+                        {contributor.username || contributor.full_name || "Anonymous User"}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                         {contributor.post_count}
