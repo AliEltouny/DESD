@@ -6,27 +6,75 @@ A modern, responsive web application for university communities built with Next.
 
 ```
 uni_hub/frontend/
-├── public/            # Static assets
+├── .next/               # Next.js build cache
+├── node_modules/        # Project dependencies
+├── public/              # Static assets (images, fonts, etc.)
+│   └── placeholders/    # Placeholder images
 ├── src/
-│   ├── app/           # Next.js app router pages
-│   ├── components/    # Reusable UI components
-│   │   ├── auth/      # Authentication components
-│   │   ├── communities/ # Community-related components
-│   │   ├── dashboard/ # Dashboard components
-│   │   ├── landing/   # Landing page components
-│   │   ├── layout/    # Layout components (header, footer, etc.)
-│   │   └── ui/        # Shared UI components
-│   ├── contexts/      # React context providers
-│   ├── hooks/         # Custom React hooks
-│   ├── services/      # API and other services
-│   │   ├── api/       # API modules by domain
-│   │   ├── apiClient.ts  # Base API configuration
-│   │   ├── errorHandling.ts # Error handling utilities
-│   │   └── cacheManager.ts  # Cache management utilities
-│   ├── styles/        # Global styles
-│   ├── types/         # TypeScript type definitions
-│   └── utils/         # Utility functions
-└── ...
+│   ├── app/             # Next.js App Router directory
+│   │   ├── (main)/        # Route groups for layout structure (example)
+│   │   │   ├── communities/ # Community pages and routes
+│   │   │   │   ├── [slug]/    # Dynamic community detail page
+│   │   │   │   │   ├── analytics/ # Community analytics
+│   │   │   │   │   ├── posts/     # Community posts
+│   │   │   │   │   │   ├── [id]/    # Specific post detail
+│   │   │   │   │   │   └── create/  # Create post page
+│   │   │   │   │   ├── manage/    # Community management pages
+│   │   │   │   │   └── settings/  # Community settings
+│   │   │   │   ├── create/    # Create community page
+│   │   │   │   └── page.tsx   # Communities list page
+│   │   │   ├── dashboard/ # User dashboard
+│   │   │   ├── events/    # Events page
+│   │   │   ├── messages/  # Messages page
+│   │   │   └── profile/   # User profile page
+│   │   ├── (auth)/        # Authentication related pages (example route group)
+│   │   │   ├── forgot-password/
+│   │   │   ├── login/
+│   │   │   ├── register/
+│   │   │   ├── reset-password/
+│   │   │   └── verify-otp/
+│   │   │       └── [email]/ # Dynamic OTP verification page
+│   │   ├── privacy-policy/ # Static pages
+│   │   ├── terms-of-service/
+│   │   ├── globals.css    # Global styles (Correct location)
+│   │   ├── layout.tsx     # Root layout
+│   │   ├── page.tsx       # Landing page
+│   │   └── providers.tsx  # Context providers wrapper
+│   ├── components/      # Reusable UI components
+│   │   ├── communities/ # Community-specific components
+│   │   │   └── slugPage/  # Components specific to the [slug] page
+│   │   ├── dashboard/   # Dashboard-specific components
+│   │   ├── landing/     # Landing page components
+│   │   ├── layouts/     # Layout components (header, footer, sidebar)
+│   │   └── ui/          # General-purpose UI elements (buttons, inputs, etc.)
+│   ├── contexts/        # React Context API providers (e.g., AuthContext)
+│   ├── hooks/           # Custom React hooks (e.g., useAuth)
+│   ├── lib/             # Utility functions, libraries helpers
+│   ├── services/        # API interaction and business logic
+│   │   ├── api/         # Specific API service modules (communityApi, authApi, etc.)
+│   │   ├── apiClient.ts # Base Axios client configuration
+│   │   ├── cacheManager.ts # Caching logic
+│   │   ├── errorHandling.ts # API error handling
+│   │   ├── index.ts     # Barrel file exporting services
+│   │   └── communityService.ts # DEPRECATED service file
+│   ├── styles/          # Style-related files (potentially redundant globals.css here)
+│   ├── types/           # TypeScript type definitions (api.ts, community.ts, etc.)
+│   └── middleware.ts    # Next.js middleware
+├── .env.example         # Example environment variables (Add if not present)
+├── .eslintrc.json       # ESLint configuration (potentially redundant)
+├── .gitignore           # Git ignore file
+├── Dockerfile           # Production Dockerfile
+├── Dockerfile.dev       # Development Dockerfile
+├── eslint.config.mjs    # ESLint Flat configuration (Preferred)
+├── next.config.js       # Next.js configuration (potentially redundant)
+├── next.config.ts       # Next.js configuration (TypeScript - Preferred)
+├── next-env.d.ts        # Next.js TypeScript declarations
+├── package-lock.json    # Exact dependency versions
+├── package.json         # Project dependencies and scripts
+├── postcss.config.js    # PostCSS configuration
+├── README.md            # This file
+├── tailwind.config.js   # Tailwind CSS configuration
+└── tsconfig.json        # TypeScript configuration
 ```
 
 ## Key Architectural Patterns

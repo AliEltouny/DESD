@@ -1,5 +1,8 @@
+import { NextConfig } from 'next';
+
 /** @type {import('next').NextConfig} */
-const nextConfig = {
+const nextConfig: NextConfig = {
+  reactStrictMode: true,
   eslint: {
     // Warning: This allows production builds to successfully complete even if
     // your project has ESLint errors.
@@ -9,6 +12,33 @@ const nextConfig = {
     // Also ignore TypeScript errors for faster builds
     ignoreBuildErrors: true,
   },
+  images: {
+    remotePatterns: [
+      {
+        protocol: 'http',
+        hostname: 'localhost',
+        port: '8000',
+        pathname: '/media/**',
+      },
+      {
+        protocol: 'http',
+        hostname: 'backend',
+        port: '8000',
+        pathname: '/media/**',
+      },
+    ],
+  },
+  webpack: (config, { dev }) => {
+    if (dev) {
+      config.watchOptions = {
+        poll: 1000,
+        aggregateTimeout: 300,
+        ignored: ['**/node_modules', '**/.git'],
+      };
+    }
+    return config;
+  },
+  output: 'standalone',
   async headers() {
     return [
       {
@@ -35,10 +65,17 @@ const nextConfig = {
     ];
   },
   async rewrites() {
+    const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://backend:8000/api';
+    const mediaUrl = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://backend:8000';
+
     return [
       {
-        source: "/api/:path*",
-        destination: "http://backend:8000/api/:path*",
+        source: '/api/:path*',
+        destination: `${apiUrl}/:path*`,
+      },
+      {
+        source: '/media/:path*',
+        destination: `${mediaUrl}/media/:path*`,
       },
     ];
   },
