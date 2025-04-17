@@ -20,6 +20,7 @@ module.exports = {
   },
   plugins: [
     require('@tailwindcss/forms'),
-    require('./src/lib/tailwind-plugin.js'), // custom plugin for button focus styles
+    // Removed custom plugin that disables button focus outlines (Accessibility issue)
+    // require('./src/lib/tailwind-plugin.js'), 
   ],
 };

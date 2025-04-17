@@ -16,6 +16,7 @@
 # next.js
 /.next/
 /out/
+.output/ # For standalone build output
 
 # production
 /build
@@ -30,12 +31,23 @@ yarn-debug.log*
 yarn-error.log*
 .pnpm-debug.log*
 
-# env files (can opt-in for committing if needed)
+# env files (IMPORTANT: Never commit .env.local or other secret files)
 .env*
+!.env.example # Make sure example file is NOT ignored
+!.env.ci # Example: Allow CI-specific env file if needed
 
 # vercel
 .vercel
 
 # typescript
 *.tsbuildinfo
-next-env.d.ts
+# next-env.d.ts should NOT be ignored
+
+# IDE / Editor directories
+.vscode/
+.idea/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
