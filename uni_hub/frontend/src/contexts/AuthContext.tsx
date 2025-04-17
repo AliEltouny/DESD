@@ -5,22 +5,17 @@ import React, {
   useState,
   useContext,
   useEffect,
+  useCallback,
   ReactNode,
+  useMemo,
 } from "react";
 import axios from "axios";
 import { useRouter } from "next/navigation";
 import { jwtDecode } from "jwt-decode";
+import { User } from '@/types/user'; // Import User type
 
 // Types
-interface User {
-  id: number;
-  email: string;
-  first_name: string;
-  last_name: string;
-  username: string;
-  date_of_birth?: string;
-  academic_year?: number;
-}
+// interface User { ... }
 
 interface AuthContextType {
   user: User | null;
@@ -150,8 +145,17 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const [isInitialized, setIsInitialized] = useState(false);
   const router = useRouter();
 
-  // Function to handle token refresh
-  const refreshAuthToken = async (): Promise<string | null> => {
+  // Function to clear all auth data (memoized)
+  const clearAuthData = useCallback(() => {
+    deleteCookie("accessToken");
+    deleteCookie("refreshToken");
+    localStorage.removeItem("user");
+    sessionStorage.removeItem("user");
+    delete api.defaults.headers.common.Authorization;
+  }, []);
+
+  // Function to handle token refresh (memoized)
+  const refreshAuthToken = useCallback(async (): Promise<string | null> => {
     try {
       const refreshToken = getCookie("refreshToken");
       
@@ -181,160 +185,10 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       clearAuthData();
       return null;
     }
-  };
+  }, [clearAuthData]);
   
-  // Function to clear all auth data
-  const clearAuthData = () => {
-    deleteCookie("accessToken");
-    deleteCookie("refreshToken");
-    localStorage.removeItem("user");
-    sessionStorage.removeItem("user");
-    delete api.defaults.headers.common.Authorization;
-  };
-
-  useEffect(() => {
-    // Check if user is authenticated on initial load
-    const checkAuth = async () => {
-      try {
-        const accessToken = getCookie("accessToken");
-        const userJSONFromLocal = localStorage.getItem("user");
-        const userJSONFromSession = sessionStorage.getItem("user");
-        const userJSON = userJSONFromLocal || userJSONFromSession;
-
-        console.log("Initial auth check - token present:", !!accessToken);
-        console.log("Initial auth check - user data present:", !!userJSON);
-        console.log("Initial auth check - remember me enabled:", !!userJSONFromLocal);
-
-        if (accessToken) {
-          try {
-            // Verify token is valid (not expired)
-            const decodedToken: any = jwtDecode(accessToken);
-            const currentTime = Date.now() / 1000;
-
-            console.log(
-              "Token expiration:",
-              new Date(decodedToken.exp * 1000).toISOString()
-            );
-            console.log("Current time:", new Date().toISOString());
-
-            if (decodedToken.exp < currentTime) {
-              console.log("Token expired, attempting refresh");
-              // Token expired, try refreshing
-              const newToken = await refreshAuthToken();
-              
-              if (!newToken) {
-                throw new Error("Failed to refresh expired token");
-              }
-              
-              // Successfully refreshed token
-              if (userJSON) {
-                const userData = JSON.parse(userJSON);
-                setUser(userData);
-                console.log("User restored after token refresh");
-              } else {
-                await fetchAndSetUserProfile(userJSONFromLocal !== null);
-              }
-            } else if (userJSON) {
-              // Token is valid, set user from storage
-              const userData = JSON.parse(userJSON);
-              setUser(userData);
-              console.log("User set from storage:", userData);
-              api.defaults.headers.common.Authorization = `Bearer ${accessToken}`;
-            } else {
-              // Token valid but no user data, fetch profile
-              await fetchAndSetUserProfile(userJSONFromLocal !== null);
-            }
-          } catch (error) {
-            console.error("Auth check error:", error);
-            // Clear invalid auth data
-            clearAuthData();
-          }
-        } else if (userJSON) {
-          // We have user data but no token - try to refresh token
-          console.log("User data found but no token, attempting refresh");
-          const refreshToken = getCookie("refreshToken");
-          
-          if (refreshToken) {
-            try {
-              const newToken = await refreshAuthToken();
-              
-              if (newToken) {
-                const userData = JSON.parse(userJSON);
-                setUser(userData);
-                console.log("Session restored via refresh token");
-              } else {
-                throw new Error("Failed to refresh token");
-              }
-            } catch (refreshError) {
-              console.error("Token refresh failed:", refreshError);
-              clearAuthData();
-            }
-          } else {
-            // No refresh token, clear the orphaned user data
-            console.log("No refresh token available, clearing user data");
-            clearAuthData();
-          }
-        }
-      } catch (error) {
-        console.error("Fatal auth check error:", error);
-        // Clear all auth data on fatal error
-        clearAuthData();
-      } finally {
-        // Always finish initialization, even if there's an error
-        setIsLoading(false);
-        setIsInitialized(true);
-      }
-    };
-
-    // Add a shorter timeout (2 seconds is reasonable) to ensure initialization 
-    // completes even if there are network issues
-    const initTimeout = setTimeout(() => {
-      if (!isInitialized) {
-        console.warn("Auth initialization timed out, completing anyway");
-        setIsLoading(false);
-        setIsInitialized(true);
-      }
-    }, 2000);
-
-    checkAuth();
-    
-    // Clean up timeout on unmount
-    return () => {
-      clearTimeout(initTimeout);
-    };
-  }, []);
-  
-  // Setup token refresh interval in a separate effect that runs after initialization
-  useEffect(() => {
-    // Only setup refresh interval when initialized and authenticated
-    if (!isInitialized || !user) return;
-    
-    console.log("Setting up token refresh interval");
-    const tokenRefreshInterval = setInterval(async () => {
-      const accessToken = getCookie("accessToken");
-      if (accessToken) {
-        try {
-          const decodedToken: any = jwtDecode(accessToken);
-          const currentTime = Date.now() / 1000;
-          
-          // Refresh token when it's 5 minutes from expiring
-          if (decodedToken.exp - currentTime < 300) {
-            console.log("Token expiring soon, refreshing");
-            await refreshAuthToken();
-          }
-        } catch (error) {
-          console.error("Error in token refresh interval:", error);
-        }
-      }
-    }, 60000); // Check every minute
-    
-    return () => {
-      clearInterval(tokenRefreshInterval);
-    };
-  }, [isInitialized, user]);
-
-  // Helper function to fetch user profile and set state
-  const fetchAndSetUserProfile = async (rememberMe: boolean) => {
+  // Helper function to fetch user profile and set state (memoized)
+  const fetchAndSetUserProfile = useCallback(async (rememberMe: boolean) => {
     try {
       console.log("Fetching user profile...");
       const profileResponse = await api.get("/profile");
@@ -352,73 +206,199 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       console.error("Failed to fetch profile:", profileError);
       throw new Error("Failed to get user data");
     }
-  };
+  }, []);
 
-  const login = async (
+  // Check if user is authenticated on initial load (memoized)
+  const checkAuth = useCallback(async () => {
+    try {
+      const accessToken = getCookie("accessToken");
+      const userJSONFromLocal = localStorage.getItem("user");
+      const userJSONFromSession = sessionStorage.getItem("user");
+      const userJSON = userJSONFromLocal || userJSONFromSession;
+
+      console.log("Initial auth check - token present:", !!accessToken);
+      console.log("Initial auth check - user data present:", !!userJSON);
+      console.log("Initial auth check - remember me enabled:", !!userJSONFromLocal);
+
+      if (accessToken) {
+        try {
+          // Verify token is valid (not expired)
+          const decodedToken: { exp: number; [key: string]: unknown } = jwtDecode(accessToken);
+          const currentTime = Date.now() / 1000;
+
+          console.log(
+            "Token expiration:",
+            new Date(decodedToken.exp * 1000).toISOString()
+          );
+          console.log("Current time:", new Date().toISOString());
+
+          if (decodedToken.exp < currentTime) {
+            console.log("Token expired, attempting refresh");
+            // Token expired, try refreshing
+            const newToken = await refreshAuthToken();
+            
+            if (!newToken) {
+              throw new Error("Failed to refresh expired token");
+            }
+            
+            // Successfully refreshed token
+            if (userJSON) {
+              const userData = JSON.parse(userJSON);
+              setUser(userData);
+              console.log("User restored after token refresh");
+            } else {
+              await fetchAndSetUserProfile(userJSONFromLocal !== null);
+            }
+          } else if (userJSON) {
+            // Token is valid, set user from storage
+            const userData = JSON.parse(userJSON);
+            setUser(userData);
+            console.log("User set from storage:", userData);
+            api.defaults.headers.common.Authorization = `Bearer ${accessToken}`;
+          } else {
+            // Token valid but no user data, fetch profile
+            await fetchAndSetUserProfile(userJSONFromLocal !== null);
+          }
+        } catch (error) {
+          console.error("Auth check error:", error);
+          // Clear invalid auth data
+          clearAuthData();
+        }
+      } else if (userJSON) {
+        // We have user data but no token - try to refresh token
+        console.log("User data found but no token, attempting refresh");
+        const refreshToken = getCookie("refreshToken");
+        
+        if (refreshToken) {
+          try {
+            const newToken = await refreshAuthToken();
+            
+            if (newToken) {
+              const userData = JSON.parse(userJSON);
+              setUser(userData);
+              console.log("Session restored via refresh token");
+            } else {
+              throw new Error("Failed to refresh token");
+            }
+          } catch (refreshError) {
+            console.error("Token refresh failed:", refreshError);
+            clearAuthData();
+          }
+        } else {
+          // No refresh token, clear the orphaned user data
+          console.log("No refresh token available, clearing user data");
+          clearAuthData();
+        }
+      }
+    } catch (error) {
+      console.error("Fatal auth check error:", error);
+      // Clear all auth data on fatal error
+      clearAuthData();
+    } finally {
+      // Always finish initialization, even if there's an error
+      setIsLoading(false);
+      setIsInitialized(true);
+    }
+  }, [refreshAuthToken, clearAuthData, fetchAndSetUserProfile]);
+
+  useEffect(() => {
+    // Add a shorter timeout (2 seconds is reasonable) to ensure initialization 
+    // completes even if there are network issues
+    const initTimeout = setTimeout(() => {
+      if (!isInitialized) {
+        console.warn("Auth initialization timed out, completing anyway");
+        setIsLoading(false);
+        setIsInitialized(true);
+      }
+    }, 2000);
+
+    checkAuth();
+    
+    // Clean up timeout on unmount
+    return () => {
+      clearTimeout(initTimeout);
+    };
+    // Run when checkAuth changes or isInitialized changes
+  }, [checkAuth, isInitialized]);
+  
+  // Setup token refresh interval in a separate effect that runs after initialization
+  useEffect(() => {
+    // Only setup refresh interval when initialized and authenticated
+    if (!isInitialized || !user) return;
+    
+    console.log("Setting up token refresh interval");
+    const tokenRefreshInterval = setInterval(async () => {
+      const accessToken = getCookie("accessToken");
+      if (accessToken) {
+        try {
+          const decodedToken: { exp: number; [key: string]: unknown } = jwtDecode(accessToken);
+          const currentTime = Date.now() / 1000;
+          
+          // Refresh token when it's 5 minutes from expiring
+          if (decodedToken.exp - currentTime < 300) {
+            console.log("Token expiring soon, refreshing");
+            await refreshAuthToken();
+          }
+        } catch (error) {
+          console.error("Error in token refresh interval:", error);
+        }
+      }
+    }, 60000); // Check every minute
+    
+    return () => {
+      clearInterval(tokenRefreshInterval);
+    };
+  }, [isInitialized, user, refreshAuthToken]);
+
+  // Login function (memoized)
+  const login = useCallback(async (
     email: string,
     password: string,
     rememberMe: boolean = false
   ) => {
     setIsLoading(true);
     try {
-      const response = await api.post("/login", { email, password });
-      const { access, refresh, user: userData } = response.data;
+      // Clear previous auth data
+      clearAuthData();
 
-      console.log("Login successful, got tokens:", !!access, !!refresh);
-      console.log("Remember me enabled:", rememberMe);
+      const response = await axios.post("/api/login/", {
+        email,
+        password,
+      });
       
-      // Set tokens in cookies with appropriate expiration
-      if (rememberMe) {
-        setCookie("accessToken", access, 30); // 30 days
-        setCookie("refreshToken", refresh, 90); // 90 days
-      } else {
-        setCookie("accessToken", access); // Session cookie
-        setCookie("refreshToken", refresh); // Session cookie
-      }
+      const { access, refresh } = response.data;
 
-      // Set user data
-      if (rememberMe) {
-        // If remember me is enabled, store user data in localStorage
-        localStorage.setItem("user", JSON.stringify(userData));
-        // Clear sessionStorage in case it was set previously
-        sessionStorage.removeItem("user");
-      } else {
-        // If remember me is not enabled, store user data in sessionStorage (cleared when browser is closed)
-        sessionStorage.setItem("user", JSON.stringify(userData));
-        // Clear localStorage in case it was set previously
-        localStorage.removeItem("user");
-      }
+      // Set tokens
+      const expDays = rememberMe ? 30 : undefined; // 30 days if remember me
+      setCookie("accessToken", access, expDays);
+      setCookie("refreshToken", refresh, expDays);
       
-      setUser(userData);
-
-      // Update API headers
+      // Fetch and set user profile
       api.defaults.headers.common.Authorization = `Bearer ${access}`;
-      
-      // Log cookies for debugging
-      console.log("Cookies after login:", document.cookie.split(';').map(c => c.trim().substring(0, 15) + '...'));
-      console.log("Remember me is:", rememberMe ? "enabled" : "disabled");
+      await fetchAndSetUserProfile(rememberMe);
 
-      // Redirect with a slight delay to ensure everything is set
-      console.log("Login successful, redirecting to dashboard...");
-      setTimeout(() => {
-        window.location.replace("/dashboard");
-      }, 100);
-    } catch (error) {
-      console.error("Login error:", error);
+      // Redirect to dashboard or intended page
+      const callbackUrl = sessionStorage.getItem('loginRedirect') || "/dashboard";
+      sessionStorage.removeItem('loginRedirect');
+      router.push(callbackUrl);
+    } catch (error: unknown) {
+      console.error("Login failed:", error);
       throw error;
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [clearAuthData, fetchAndSetUserProfile, router]);
 
-  const logout = () => {
+  // Logout function (memoized)
+  const logout = useCallback(() => {
     // Clear all auth data
     clearAuthData();
     setUser(null);
     router.push("/login");
-  };
+  }, [clearAuthData, router]);
 
-  const signup = async (
+  // Signup function (memoized)
+  const signup = useCallback(async (
     email: string,
     username: string,
     firstName: string,
@@ -447,9 +427,10 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       setIsLoading(false);
       throw error;
     }
-  };
+  }, []);
 
-  const verifyOtp = async (email: string, otp: string) => {
+  // Verify OTP function (memoized)
+  const verifyOtp = useCallback(async (email: string, otp: string) => {
     setIsLoading(true);
     try {
       console.log("Verifying OTP for email:", email);
@@ -490,22 +471,16 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       setTimeout(() => {
         window.location.replace("/dashboard");
       }, 500);
-    } catch (error: any) {
-      console.error("OTP verification error:", error);
-      console.error("Error response:", error.response?.data);
-      // Clear any partial state
-      document.cookie =
-        "accessToken=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT";
-      document.cookie =
-        "refreshToken=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT";
-      localStorage.removeItem("user");
-      throw error;
+    } catch (err: unknown) {
+      console.error("OTP verification error:", err);
+      throw err;
     } finally {
       setIsLoading(false);
     }
-  };
+  }, []);
 
-  const value = {
+  // Memoized context value
+  const value = useMemo(() => ({
     user,
     isAuthenticated: !!user,
     isLoading,
@@ -513,7 +488,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     logout,
     signup,
     verifyOtp,
-  };
+  }), [user, isLoading, login, logout, signup, verifyOtp]);
 
   // Only render children when authentication is initialized
   if (!isInitialized) {

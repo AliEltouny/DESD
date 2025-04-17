@@ -1,6 +1,5 @@
 "use client";
 
-import React from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { Post } from "@/services/communityService";
@@ -128,6 +127,7 @@ const PostCard: React.FC<PostCardProps> = ({
     try {
       return formatDistanceToNow(new Date(dateString), { addSuffix: true });
     } catch (error) {
+      console.warn(`Error formatting date string: ${dateString}`, error);
       return dateString;
     }
   };
@@ -201,24 +201,23 @@ const PostCard: React.FC<PostCardProps> = ({
                 ? post.content.substring(0, 200) + '...' 
                 : post.content 
             }}
-            style={{
-              color: '#111827',
-              '--tw-prose-body': '#111827'
-            }}
           />
         </div>
 
         {/* Post image if available */}
         {post.image && (
           <div className="mt-4 relative h-48 w-full rounded-lg overflow-hidden">
-            <img
+            <Image
               src={getMediaUrl(post.image)}
               alt={post.title}
-              onError={(e) => {
-                e.currentTarget.onerror = null;
-                e.currentTarget.style.display = "none";
+              fill
+              style={{ objectFit: "cover" }}
+              className="rounded-lg"
+              onError={(e: React.SyntheticEvent<HTMLImageElement, Event>) => {
+                const imgElement = e.currentTarget; 
+                imgElement.onerror = null;
+                imgElement.style.display = "none";
               }}
-              className="object-cover w-full h-full"
             />
           </div>
         )}

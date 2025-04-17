@@ -28,7 +28,6 @@ const Select = forwardRef<HTMLSelectElement, SelectProps>(
     fullWidth = true,
     placeholder,
     helpText,
-    customDropdown = false,
     onChange,
     ...props
   }, ref) => {

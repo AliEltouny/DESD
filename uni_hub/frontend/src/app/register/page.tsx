@@ -1,10 +1,11 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import AuthLayout from "@/components/layouts/AuthLayout";
 import Input from "@/components/ui/Input";
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 import Button from "@/components/ui/Button";
 import { useAuth } from "@/contexts/AuthContext";
 
@@ -78,7 +79,7 @@ const RegisterPage = () => {
     }
 
     if (touched.password2 && formData.password !== formData.password2) {
-      messages.password2 = "Passwords don't match";
+      messages.password2 = "Passwords don&apos;t match";
     }
 
     setValidationMessages(messages);
@@ -134,11 +135,13 @@ const RegisterPage = () => {
 
       // Redirect to OTP verification page
       router.push(`/verify-otp/${email}`);
-    } catch (err: any) {
+    } catch (err) {
       console.error("Registration error:", err);
-      setError(
-        err.response?.data?.message || "Failed to register. Please try again."
-      );
+      let message = "Failed to register. Please try again.";
+      if (err && typeof err === 'object' && 'response' in err && err.response && typeof err.response === 'object' && 'data' in err.response && err.response.data && typeof err.response.data === 'object' && 'message' in err.response.data) {
+        message = (err.response.data as { message: string }).message || message;
+      }
+      setError(message);
     } finally {
       setIsLoading(false);
     }

@@ -1,6 +1,5 @@
 import api from '../apiClient';
 import { 
-  PostFilters, 
   CommentFilters, 
   PostFormRequest,
   CommentFormRequest,
@@ -25,8 +24,12 @@ class PostAPI {
       );
       
       // Handle paginated response
-      if (response.data && typeof response.data === 'object' && 'results' in response.data) {
-        if (response.data.results && response.data.results.length > 0) {
+      // Type guard for paginated response structure
+      if (response.data && 
+          typeof response.data === 'object' && 
+          'results' in response.data && 
+          Array.isArray(response.data.results)) { 
+        if (response.data.results.length > 0) {
           return response.data.results[0];
         }
         throw new Error("Post not found in API response");
@@ -70,7 +73,7 @@ class PostAPI {
         
         // Debug log FormData contents
         console.log("FormData being sent to API:");
-        for (const pair of (formData as any).entries()) {
+        for (const pair of (formData as FormData).entries()) {
           console.log(`${pair[0]}: ${pair[1]}`);
         }
         
@@ -128,26 +131,18 @@ class PostAPI {
         console.log("Post creation successful with JSON:", response.data);
         return response.data;
       }
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Post creation error:", error);
       
       // Get detailed error information
-      const errorDetails = error.response?.data || {};
+      const errorDetails = error instanceof Error ? error.message : 'Unknown error';
       console.error("Error details from server:", errorDetails);
       
       // Check for specific validation errors
-      if (error.response?.status === 400) {
-        // Format validation errors for better debugging
-        let errorMessage = "Validation failed: ";
-        if (typeof errorDetails === 'object') {
-          Object.entries(errorDetails).forEach(([field, errors]) => {
-            errorMessage += `${field}: ${Array.isArray(errors) ? errors.join(', ') : errors}; `;
-          });
-        }
-        
+      if (error instanceof Error && error.message.includes('Validation failed')) {
         return handleApiError(error, "creating post", {
           rethrow: true,
-          defaultMessage: errorMessage
+          defaultMessage: error.message
         });
       }
       

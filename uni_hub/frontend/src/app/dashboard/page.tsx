@@ -18,7 +18,7 @@ import CommunityRecommendations from "@/components/dashboard/CommunityRecommenda
 
 export default function Dashboard() {
   const router = useRouter();
-  const { user, isAuthenticated, isLoading } = useAuth();
+  const { isAuthenticated, isLoading } = useAuth();
   const [isClient, setIsClient] = useState(false);
 
   useEffect(() => {

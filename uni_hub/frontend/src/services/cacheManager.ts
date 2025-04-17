@@ -12,7 +12,7 @@ interface MemoryCacheEntry<T> {
 
 // Memory cache for fast access
 class MemoryCache {
-  private cache: Record<string, MemoryCacheEntry<any>> = {};
+  private cache: Record<string, MemoryCacheEntry<unknown>> = {};
 
   /**
    * Set a value in the memory cache
@@ -40,7 +40,7 @@ class MemoryCache {
     const isValid = entry.data !== null && 
                     Date.now() - entry.timestamp < entry.expiresIn;
                     
-    return isValid ? entry.data : null;
+    return isValid ? (entry.data as T | null) : null;
   }
 
   /**
@@ -101,10 +101,11 @@ class LocalStorageCache {
       }
       
       // Return the data without the cache timestamp
-      const { _cacheTime, ...data } = item;
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
+      const { _cacheTime: _, ...data } = item;
       return data as T;
-    } catch (e) {
-      console.error(`Error getting cached item ${key}:`, e);
+    } catch (error) {
+      console.error(`Error getting cached item ${key}:`, error);
       return null;
     }
   }
@@ -169,13 +170,13 @@ class LocalStorageCache {
             localStorage.removeItem(key);
             console.log(`Cleared expired cache for ${key}`);
           }
-        } catch (e) {
+        } catch {
           // If we can't parse it, just remove it
           localStorage.removeItem(key);
         }
       });
-    } catch (e) {
-      console.error(`Error cleaning cache with prefix ${prefix}:`, e);
+    } catch (error) {
+      console.error(`Error cleaning cache with prefix ${prefix}:`, error);
     }
   }
 }

@@ -20,7 +20,6 @@ export default function ResetPasswordPage() {
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
   const [invalidLink, setInvalidLink] = useState(false);
-  const [passwordStrength, setPasswordStrength] = useState(0);
 
   useEffect(() => {
     // Check if we have the required parameters
@@ -32,38 +31,37 @@ export default function ResetPasswordPage() {
   // Calculate password strength
   useEffect(() => {
     if (!newPassword) {
-      setPasswordStrength(0);
       return;
     }
 
-    let strength = 0;
-    
-    // Length check
-    if (newPassword.length >= 8) strength += 1;
-    if (newPassword.length >= 12) strength += 1;
-    
-    // Complexity checks
-    if (/[A-Z]/.test(newPassword)) strength += 1;
-    if (/[a-z]/.test(newPassword)) strength += 1;
-    if (/[0-9]/.test(newPassword)) strength += 1;
-    if (/[^A-Za-z0-9]/.test(newPassword)) strength += 1;
+    // Removed unused strength variable and calculation
+    // let strength = 0;
+    // // Length check
+    // if (newPassword.length >= 8) strength += 1;
+    // if (newPassword.length >= 12) strength += 1;
+    // // Complexity checks
+    // if (/[A-Z]/.test(newPassword)) strength += 1;
+    // if (/[a-z]/.test(newPassword)) strength += 1;
+    // if (/[0-9]/.test(newPassword)) strength += 1;
+    // if (/[^A-Za-z0-9]/.test(newPassword)) strength += 1;
     
     // Scale to 0-100 for progress bar
-    setPasswordStrength(Math.min(100, Math.round((strength / 6) * 100)));
+    // passwordStrength is not used in the component
   }, [newPassword]);
 
-  const getStrengthLabel = () => {
-    if (passwordStrength === 0) return "";
-    if (passwordStrength < 40) return "Weak";
-    if (passwordStrength < 70) return "Medium";
-    return "Strong";
-  };
+  // Commented out unused strength helper functions
+  // const getStrengthLabel = () => {
+  //   if (passwordStrength === 0) return \"\";
+  //   if (passwordStrength < 40) return \"Weak\";
+  //   if (passwordStrength < 70) return \"Medium\";
+  //   return \"Strong\";
+  // };
 
-  const getStrengthColor = () => {
-    if (passwordStrength < 40) return "bg-red-500";
-    if (passwordStrength < 70) return "bg-yellow-500";
-    return "bg-green-500";
-  };
+  // const getStrengthColor = () => {
+  //   if (passwordStrength < 40) return \"bg-red-500\";
+  //   if (passwordStrength < 70) return \"bg-yellow-500\";
+  //   return \"bg-green-500\";
+  // };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -71,7 +69,7 @@ export default function ResetPasswordPage() {
     
     // Client-side validation
     if (newPassword !== confirmPassword) {
-      setError("Passwords don't match. Please try again.");
+      setError("Passwords don&apos;t match. Please try again."); // Escaped apostrophe
       return;
     }
     
@@ -93,16 +91,17 @@ export default function ResetPasswordPage() {
       
       // Scroll to top on success
       window.scrollTo({ top: 0, behavior: 'smooth' });
-    } catch (err: any) {
+    } catch (err: unknown) { // Changed to unknown
       console.error("Password reset confirmation error:", err);
-      if (err.response?.data?.token?.[0] === "Invalid or expired token.") {
+      if (err && typeof err === 'object' && 'response' in err && err.response && typeof err.response === 'object' && 'data' in err.response && err.response.data && typeof err.response.data === 'object' && 'token' in err.response.data && Array.isArray((err.response.data as {token: unknown[]}).token) && (err.response.data as {token: string[]}).token[0] === "Invalid or expired token.") {
         setInvalidLink(true);
       } else {
-        setError(
-          err.response?.data?.message || 
-          err.response?.data?.new_password?.[0] ||
-          "Failed to reset your password. Please try again."
-        );
+        let message = "Failed to reset your password. Please try again.";
+        if (err && typeof err === 'object' && 'response' in err && err.response && typeof err.response === 'object' && 'data' in err.response && err.response.data && typeof err.response.data === 'object') {
+          const data = err.response.data as { message?: string; new_password?: string[] };
+          message = data.message || (data.new_password?.[0]) || message;
+        }
+        setError(message);
       }
     } finally {
       setIsLoading(false);
@@ -209,7 +208,7 @@ export default function ResetPasswordPage() {
                 Set Your New Password
               </h2>
               <p className="text-gray-600 mb-4">
-                Create a strong password that you don't use for other websites.
+                Create a strong password that you don&apos;t use for other websites.
               </p>
               
               <div className="space-y-4">

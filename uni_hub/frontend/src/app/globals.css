@@ -382,3 +382,39 @@ a[role="button"] {
 [contenteditable="true"] {
   color: #111827 !important;
 }
+
+/* Background pattern for community banners */
+.bg-pattern {
+  background-image: url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23ffffff' fill-opacity='0.15'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E");
+}
+
+/* Add customizable theme colors for community banners */
+.community-theme-blue {
+  background-image: linear-gradient(to right, #4f46e5, #3b82f6);
+}
+
+.community-theme-green {
+  background-image: linear-gradient(to right, #059669, #10b981);
+}
+
+.community-theme-purple {
+  background-image: linear-gradient(to right, #7c3aed, #8b5cf6);
+}
+
+.community-theme-red {
+  background-image: linear-gradient(to right, #dc2626, #ef4444);
+}
+
+.community-theme-orange {
+  background-image: linear-gradient(to right, #ea580c, #f97316);
+}
+
+/* Better card hover effects */
+.card-hover-effect {
+  transition: transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out;
+}
+
+.card-hover-effect:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+}

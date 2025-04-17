@@ -473,26 +473,10 @@ const RichTextEditor: React.FC<RichTextEditorProps> = ({
         <MenuBar editor={editor} />
         <EditorContent 
           editor={editor} 
-          className="prose max-w-none p-3 outline-none focus:ring-blue-500 focus:border-blue-500 text-gray-900"
-          style={{ 
+          className="prose prose-sm max-w-none w-full dark:prose-invert focus:outline-none"
+          style={{
             minHeight,
             color: '#111827', // text-gray-900 equivalent
-            '--tw-prose-body': '#111827',
-            '--tw-prose-headings': '#111827',
-            '--tw-prose-lead': '#111827',
-            '--tw-prose-links': '#2563eb', 
-            '--tw-prose-bold': '#111827',
-            '--tw-prose-counters': '#111827',
-            '--tw-prose-bullets': '#111827',
-            '--tw-prose-hr': '#111827',
-            '--tw-prose-quotes': '#111827',
-            '--tw-prose-quote-borders': '#e5e7eb',
-            '--tw-prose-captions': '#111827',
-            '--tw-prose-code': '#111827',
-            '--tw-prose-pre-code': '#e5e7eb',
-            '--tw-prose-pre-bg': '#1f2937',
-            '--tw-prose-th-borders': '#d1d5db',
-            '--tw-prose-td-borders': '#e5e7eb',
           }}
         />
       </div>

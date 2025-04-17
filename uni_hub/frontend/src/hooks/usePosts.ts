@@ -1,6 +1,6 @@
 import { useMemo } from 'react';
 import { postApi } from '@/services/api/postApi';
-import { PostFilters, CommentFilters, PostFormRequest, CommentFormRequest } from '@/types/api';
+import { CommentFilters } from '@/types/api';
 import useApi, { useLazyApi } from './useApi';
 
 /**
@@ -139,7 +139,7 @@ export function useCreateComment() {
   };
 }
 
-export default {
+const postHooks = {
   usePost,
   useCreatePost,
   useUpdatePost,
@@ -148,4 +148,6 @@ export default {
   useTogglePinPost,
   usePostComments,
   useCreateComment
-}; 
+};
+
+export { postHooks }; 

@@ -1,22 +1,43 @@
+# Stage 1: Build the Next.js application
+FROM node:18-alpine AS builder
+
+WORKDIR /app
+
+# Copy package files and install ALL dependencies (needed for build)
+COPY package.json package-lock.json* ./
+RUN npm install
+
+# Copy the rest of the application source code
+COPY . .
+
+# Set NODE_ENV to production for the build process
+ENV NODE_ENV production
+ENV NEXT_TELEMETRY_DISABLED 1
+
+# Build the Next.js application (Uncommented for production builds)
+RUN npm run build
+
+# Stage 2: Create the final production image
 FROM node:18-alpine
 
 WORKDIR /app
 
-# Copy package files and install dependencies
-COPY package.json package-lock.json* ./
-RUN npm install
-
-# Copy all files (most will be overridden by volume mounts in dev mode)
-COPY . .
-
-# Set environment variables
+# Set NODE_ENV to production for runtime
+ENV NODE_ENV production
 ENV NEXT_TELEMETRY_DISABLED 1
 
-# Development mode by default (can be overridden at runtime)
-ENV NODE_ENV development
+# Copy package files and install ONLY production dependencies
+COPY package.json package-lock.json* ./
+RUN npm install --omit=dev
 
-# Expose port
+# Copy built assets from the builder stage
+COPY --from=builder /app/.next ./.next
+COPY --from=builder /app/public ./public
+COPY --from=builder /app/package.json ./package.json
+COPY --from=builder /app/next.config.js ./next.config.js
+
+# Expose port 3000
 EXPOSE 3000
 
-# Default command for development
-CMD ["npm", "run", "dev", "--", "-p", "3000"]
+# Command to run the production server
+CMD ["npm", "run", "start", "--", "-p", "3000"]

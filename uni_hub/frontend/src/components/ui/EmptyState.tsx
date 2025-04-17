@@ -49,10 +49,9 @@ const EmptyState: React.FC<EmptyStateProps> = ({
  * Default empty state for communities
  */
 export const CommunityEmptyState: React.FC<{ 
-  isAuthenticated: boolean; 
   memberOnly?: boolean;
   className?: string;
-}> = ({ isAuthenticated, memberOnly = false, className = '' }) => {
+}> = ({ memberOnly = false, className = '' }) => {
   return (
     <EmptyState
       title={memberOnly ? "No communities joined" : "No communities found"}

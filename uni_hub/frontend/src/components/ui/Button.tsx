@@ -5,14 +5,12 @@ import LoadingSpinner from "./LoadingSpinner";
 
 interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
   isLoading?: boolean;
-  variant?: "primary" | "secondary" | "danger" | "success";
   fullWidth?: boolean;
 }
 
 const Button: React.FC<ButtonProps> = ({
   children,
   isLoading = false,
-  variant = "primary",
   fullWidth = false,
   className = "",
   disabled,

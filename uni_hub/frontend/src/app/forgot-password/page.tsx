@@ -4,7 +4,6 @@ import React, { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import AuthLayout from "@/components/layouts/AuthLayout";
-import Input from "@/components/ui/Input";
 import Button from "@/components/ui/Button";
 import api from "@/services/api";
 
@@ -25,12 +24,13 @@ export default function ForgotPasswordPage() {
       setSuccess(true);
       // Scroll to top on success
       window.scrollTo({ top: 0, behavior: 'smooth' });
-    } catch (err: any) {
+    } catch (err) {
       console.error("Password reset request error:", err);
-      setError(
-        err.response?.data?.message || 
-        "Failed to process your request. Please try again."
-      );
+      let message = "Failed to process your request. Please try again.";
+      if (err && typeof err === 'object' && 'response' in err && err.response && typeof err.response === 'object' && 'data' in err.response && err.response.data && typeof err.response.data === 'object' && 'message' in err.response.data) {
+        message = (err.response.data as { message: string }).message || message;
+      }
+      setError(message);
     } finally {
       setIsLoading(false);
     }
@@ -59,12 +59,12 @@ export default function ForgotPasswordPage() {
               Check Your Email
             </h3>
             <p className="text-gray-600 mb-4 text-lg">
-              We've sent a password reset link to <strong>{email}</strong>.
+              We&apos;ve sent a password reset link to <strong>{email}</strong>.
               Please check your inbox and follow the instructions to reset your
               password.
             </p>
             <p className="text-sm text-gray-500 mb-6">
-              If you don't see the email, check your spam folder.
+              If you don&apos;t see the email, check your spam folder.
             </p>
             <Button 
               onClick={() => router.push("/login")}
@@ -84,7 +84,7 @@ export default function ForgotPasswordPage() {
                 Forgot Your Password?
               </h3>
               <p className="text-gray-600">
-                Enter your email address below, and we'll send you a link to reset your password.
+                Enter your email address below, and we&apos;ll send you a link to reset your password.
               </p>
             </div>
             

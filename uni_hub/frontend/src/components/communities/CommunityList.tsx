@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import { useState, useEffect } from "react";
 import { getCommunities } from "@/services/communityService";
 import { Community } from "@/types/community";
 import CommunityCard from "./CommunityCard";
@@ -64,7 +64,7 @@ const CommunityList: React.FC<CommunityListProps> = ({
         setLoading(true);
         setError(null);
 
-        const params: Record<string, any> = {
+        const params: Record<string, string | boolean | number> = {
           order_by: orderBy,
         };
 
@@ -208,7 +208,7 @@ const CommunityList: React.FC<CommunityListProps> = ({
                   htmlFor="member-only"
                   className="ml-2 block text-sm text-gray-900"
                 >
-                  Show only communities I'm a member of
+                  Show only communities I&apos;m a member of
                 </label>
               </div>
             )}

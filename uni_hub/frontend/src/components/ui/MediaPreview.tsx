@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { getMediaUrl } from '@/services/api';
+import Image from 'next/image';
 
 interface MediaPreviewProps {
   src: string | File;
@@ -102,7 +103,7 @@ export default function MediaPreview({
         URL.revokeObjectURL(preview);
       }
     };
-  }, [src, type]);
+  }, [src, type, preview]);
 
   // Determine CSS classes for aspect ratio
   const getAspectRatioClass = () => {
@@ -153,10 +154,12 @@ export default function MediaPreview({
     switch (mediaType) {
       case 'image':
         return preview ? (
-          <img
+          <Image
             src={preview}
             alt={alt}
-            className="w-full h-full object-cover"
+            fill
+            style={{ objectFit: "cover" }}
+            className="w-full h-full"
             onError={() => setError('Failed to load image')}
           />
         ) : (

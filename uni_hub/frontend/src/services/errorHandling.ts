@@ -1,8 +1,8 @@
-import axios, { AxiosError } from 'axios';
+import axios from 'axios';
 
-interface ErrorHandlerOptions {
+interface ErrorHandlerOptions<T> {
   defaultMessage?: string;
-  fallbackValue?: any;
+  fallbackValue?: T;
   rethrow?: boolean;
 }
 
@@ -11,56 +11,69 @@ interface ErrorHandlerOptions {
  * @param error The caught error
  * @param context Description of where the error occurred
  * @param options Additional options for handling the error
- * @returns The fallback value if rethrow is false
+ * @returns The fallback value if rethrow is false, otherwise never returns (throws)
  */
-export const handleApiError = (
-  error: any, 
+export const handleApiError = <T = unknown>(
+  error: unknown, 
   context: string, 
-  options: ErrorHandlerOptions = {}
-) => {
+  options: ErrorHandlerOptions<T> = {}
+): T => {
   const { 
     defaultMessage = "An unexpected error occurred", 
-    fallbackValue = [], 
+    fallbackValue = [] as unknown as T,
     rethrow = false 
   } = options;
 
   // Log detailed error information
+  let errorMessage = defaultMessage;
+  let statusCode: number | undefined;
+
   console.error(`Error in ${context}:`, error);
   
-  if (axios.isAxiosError(error) && error.response) {
-    console.error(`Status: ${error.response.status}`, error.response.data);
+  if (axios.isAxiosError(error)) {
+    statusCode = error.response?.status;
+    const responseData = error.response?.data;
+    console.error(`Status: ${statusCode}`, responseData);
+    errorMessage = responseData?.detail || responseData?.message || error.message || defaultMessage;
     
     // Handle common status codes
-    switch (error.response.status) {
+    switch (statusCode) {
       case 401:
         console.error("Authentication error - user not authenticated");
-        if (rethrow) throw new Error("Please log in to continue");
+        errorMessage = "Please log in to continue";
         break;
       case 403:
         console.error("Authorization error - user doesn't have permission");
-        if (rethrow) throw new Error("You don't have permission to access this resource");
+        errorMessage = "You don't have permission to access this resource";
         break;
       case 404:
         console.error("Resource not found");
-        if (rethrow) throw new Error(`${context} not found. It may have been deleted or never existed.`);
+        errorMessage = `${context} not found. It may have been deleted or never existed.`;
         break;
       case 500:
         console.error("Server error");
-        if (rethrow) throw new Error("Server error. Please try again later.");
+        errorMessage = "Server error. Please try again later.";
         break;
     }
+  } else if (error instanceof Error) {
+    // Handle standard JS errors
+    errorMessage = error.message || defaultMessage;
+  } else {
+    // Handle other types of errors (e.g., strings)
+    console.error("Non-standard error type:", typeof error, error);
   }
   
   // Rethrow with readable message if needed
   if (rethrow) {
-    const message = error.response?.data?.detail || 
-                   error.response?.data?.message || 
-                   error.message || 
-                   defaultMessage;
-    throw new Error(message);
+    throw new Error(errorMessage);
   }
   
-  // Otherwise return fallback value
+  // Otherwise return fallback value (must be defined if rethrow is false)
+  if (fallbackValue === undefined) {
+    // Fallback must be provided if not rethrowing
+    console.error(`handleApiError called without rethrow or fallbackValue for context: ${context}`);
+    throw new Error(`API call failed in ${context} and no fallback was specified.`);
+  }
   return fallbackValue;
 };
 
@@ -70,11 +83,11 @@ export const handleApiError = (
  * @param entityName The name of the entity for logging
  * @returns Processed data array
  */
-export const processApiResponse = <T>(data: any, entityName: string): T[] => {
+export const processApiResponse = <T>(data: unknown, entityName: string): T[] => {
   // Handle paginated response
-  if (data && typeof data === 'object' && 'results' in data) {
-    console.log(`Retrieved ${data.results.length} ${entityName} from paginated response`);
-    return data.results as T[];
+  if (data && typeof data === 'object' && 'results' in data && Array.isArray((data as {results: unknown[]}).results)) {
+    console.log(`Retrieved ${(data as {results: unknown[]}).results.length} ${entityName} from paginated response`);
+    return (data as {results: T[]}).results;
   }
   
   // Handle direct array response

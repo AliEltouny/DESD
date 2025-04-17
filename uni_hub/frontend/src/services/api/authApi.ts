@@ -27,7 +27,7 @@ class AuthAPI {
   /**
    * Register a new user
    */
-  async signup(data: SignupData): Promise<any> {
+  async signup(data: SignupData): Promise<unknown> {
     try {
       // Convert to snake_case for Django
       const payload = {
@@ -51,7 +51,7 @@ class AuthAPI {
   /**
    * Verify OTP code sent to user
    */
-  async verifyOtp(email: string, otp: string): Promise<any> {
+  async verifyOtp(email: string, otp: string): Promise<unknown> {
     try {
       const response = await api.post(`/verify-otp/${email}`, { otp });
       return response.data;

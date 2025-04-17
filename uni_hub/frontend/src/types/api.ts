@@ -96,7 +96,7 @@ export interface ApiSuccessResponse {
 
 export interface ApiErrorResponse {
   detail?: string;
-  [key: string]: any;
+  [key: string]: unknown;
 }
 
 // Types moved from communityService.ts to avoid circular dependencies
@@ -135,7 +135,9 @@ export interface Post {
   updated_at: string;
 }
 
-export interface PostDetail extends Post {
+// Use Omit to exclude the incompatible 'community' property from Post
+export interface PostDetail extends Omit<Post, 'community'> {
+  // Redefine community with the correct object type
   community: {
     id: number;
     name: string;

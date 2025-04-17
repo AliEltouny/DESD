@@ -7,10 +7,6 @@ import {
   CommunityFilters, 
   PostFilters, 
   CommentFilters, 
-  ApiSuccessResponse,
-  MembershipApprovalRequest,
-  MembershipRoleRequest,
-  InvitationRequest,
   Post,
   Comment,
   Membership,
@@ -49,7 +45,7 @@ class CommunityAPI {
       
       return communityData;
     } catch (error) {
-      return handleApiError(error, "fetching communities", {
+      return handleApiError<Community[]>(error, "fetching communities", {
         fallbackValue: [],
         rethrow: false
       });
@@ -115,8 +111,12 @@ class CommunityAPI {
       
       // Handle different response formats
       let communityData;
-      if (response.data && typeof response.data === 'object' && 'results' in response.data) {
-        if (response.data.results && response.data.results.length > 0) {
+      // Type guard for paginated response structure
+      if (response.data && 
+          typeof response.data === 'object' && 
+          'results' in response.data && 
+          Array.isArray(response.data.results)) {
+        if (response.data.results.length > 0) {
           communityData = response.data.results[0];
         } else {
           throw new Error("Community not found in API response");
@@ -130,7 +130,7 @@ class CommunityAPI {
       return communityData;
     } catch (error) {
       // Use standardized error handler
-      return handleApiError(error, `community "${cleanSlug}"`, {
+      return handleApiError<CommunityDetail>(error, `community "${cleanSlug}"`, {
         rethrow: true,
         defaultMessage: "Failed to load community data. Please try again later."
       });
@@ -176,9 +176,9 @@ class CommunityAPI {
     } catch (error) {
       console.error(
         "Community creation error:",
-        error.response?.data || error.message || error
+        error instanceof Error ? error.message : error
       );
-      throw error;
+      throw new Error(error instanceof Error ? error.message : "Failed to create community.");
     }
   }
 
@@ -194,7 +194,7 @@ class CommunityAPI {
       
       return processApiResponse<Post>(response.data, 'posts');
     } catch (error) {
-      return handleApiError(error, `posts for community "${communitySlug}"`, {
+      return handleApiError<Post[]>(error, `posts for community "${communitySlug}"`, {
         fallbackValue: [],
         rethrow: false
       });
@@ -217,7 +217,7 @@ class CommunityAPI {
       
       return processApiResponse<Comment>(response.data, 'comments');
     } catch (error) {
-      return handleApiError(error, `comments for post ${postId}`, {
+      return handleApiError<Comment[]>(error, `comments for post ${postId}`, {
         fallbackValue: [],
         rethrow: false
       });
@@ -237,7 +237,7 @@ class CommunityAPI {
       
       return processApiResponse<Membership>(response.data, 'members');
     } catch (error) {
-      return handleApiError(error, `members for community "${slug}"`, {
+      return handleApiError<Membership[]>(error, `members for community "${slug}"`, {
         fallbackValue: [],
         rethrow: false
       });
@@ -247,7 +247,7 @@ class CommunityAPI {
   /**
    * Get analytics for a community
    */
-  async getCommunityAnalytics(communitySlug: string): Promise<any> {
+  async getCommunityAnalytics(communitySlug: string): Promise<unknown> {
     // Default analytics structure to return on errors or missing data
     const defaultAnalytics = {
       member_growth: { daily: [], monthly: [] },
@@ -264,9 +264,11 @@ class CommunityAPI {
       top_contributors: []
     };
 
+    // Define cacheKey here so it's accessible in the outer catch block
+    const cacheKey = `analytics_${communitySlug}`;
+
     try {
       // First check if the analytics data is cached in memory
-      const cacheKey = `analytics_${communitySlug}`;
       if (memoryCache.isValid(cacheKey)) {
         console.log("Using cached analytics data for", communitySlug);
         return memoryCache.get(cacheKey) || defaultAnalytics;
@@ -320,81 +322,19 @@ class CommunityAPI {
         return defaultAnalytics;
       } catch (error) {
         // Log info but not as an error
-        console.info(`Analytics not available for ${communitySlug}:`, error.message);
+        console.info(`Analytics not available for ${communitySlug}:`, error instanceof Error ? error.message : "Unknown error");
         memoryCache.set(cacheKey, defaultAnalytics, 60); // Cache for 1 minute
         return defaultAnalytics;
       }
-    } catch (error) {
+    } catch /* (error) */ {
       // Handle any other unexpected errors
       console.info(`Analytics unavailable for ${communitySlug}`);
+      memoryCache.set(cacheKey, defaultAnalytics, 60); // Cache for 1 minute
       return defaultAnalytics;
-    }
-  }
-
-  /**
-   * Invite a user to a community
-   */
-  async inviteToCommunity(
-    slug: string, 
-    invitation: InvitationRequest
-  ): Promise<ApiSuccessResponse> {
-    try {
-      const response = await api.post<ApiSuccessResponse>(
-        `/communities/${slug}/invite/`,
-        invitation
-      );
-      return response.data;
-    } catch (error) {
-      return handleApiError(error, `inviting to community "${slug}"`, {
-        rethrow: true,
-        defaultMessage: "Failed to send invitation. Please try again later."
-      });
-    }
-  }
-
-  /**
-   * Update a member's role in a community
-   */
-  async updateMemberRole(
-    slug: string,
-    request: MembershipRoleRequest
-  ): Promise<ApiSuccessResponse> {
-    try {
-      const response = await api.put<ApiSuccessResponse>(
-        `/communities/${slug}/update_member_role/`,
-        request
-      );
-      return response.data;
-    } catch (error) {
-      return handleApiError(error, `updating member role in "${slug}"`, {
-        rethrow: true,
-        defaultMessage: "Failed to update member role. Please try again later."
-      });
-    }
-  }
-
-  /**
-   * Approve or reject a membership request
-   */
-  async approveMembership(
-    slug: string,
-    request: MembershipApprovalRequest
-  ): Promise<ApiSuccessResponse> {
-    try {
-      const response = await api.put<ApiSuccessResponse>(
-        `/communities/${slug}/approve_membership/`,
-        request
-      );
-      return response.data;
-    } catch (error) {
-      return handleApiError(error, `handling membership request in "${slug}"`, {
-        rethrow: true,
-        defaultMessage: "Failed to process membership request. Please try again later."
-      });
     }
   }
 }
 
 // Export a singleton instance
 export const communityApi = new CommunityAPI();
-export default communityApi; 
+export default communityApi;

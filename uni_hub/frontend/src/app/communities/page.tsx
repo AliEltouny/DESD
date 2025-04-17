@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import { useState } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import CommunityList from "@/components/communities/CommunityList";
 import Link from "next/link";
@@ -9,13 +9,6 @@ import DashboardLayout from "@/components/layouts/DashboardLayout";
 export default function CommunitiesPage() {
   const { isAuthenticated } = useAuth();
   const [memberOnly, setMemberOnly] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-
-  // Error handler function that can be passed to child components
-  const handleError = (errorMessage: string) => {
-    console.error("Community page error:", errorMessage);
-    setError(errorMessage);
-  };
 
   return (
     <DashboardLayout>
@@ -44,18 +37,6 @@ export default function CommunitiesPage() {
             </Link>
           )}
         </div>
-
-        {error && (
-          <div className="bg-red-50 border border-red-200 text-red-600 p-4 rounded-lg mb-6">
-            <p>{error}</p>
-            <button
-              className="mt-2 text-sm text-red-700 font-medium underline"
-              onClick={() => window.location.reload()}
-            >
-              Reload page
-            </button>
-          </div>
-        )}
 
         <div className="bg-white shadow-sm rounded-lg p-6 mb-8">
           <p className="text-lg text-gray-600">
@@ -113,7 +94,7 @@ export default function CommunitiesPage() {
               htmlFor="member-only-filter"
               className="ml-2 block text-sm text-gray-900"
             >
-              Show only communities I'm a member of
+              Show only communities I&apos;m a member of
             </label>
           </div>
         )}

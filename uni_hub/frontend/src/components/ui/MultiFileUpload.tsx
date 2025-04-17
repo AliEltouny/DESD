@@ -54,8 +54,8 @@ export default function MultiFileUpload({
     if (onBlur) onBlur();
   };
 
-  // Validate and add files
-  const addFiles = (newFiles: File[]) => {
+  // Validate and add files (wrapped in useCallback)
+  const addFiles = useCallback((newFiles: File[]) => {
     const errors: string[] = [];
     const validFiles: File[] = [];
 
@@ -109,7 +109,7 @@ export default function MultiFileUpload({
     if (fileInputRef.current) {
       fileInputRef.current.value = '';
     }
-  };
+  }, [files, maxFiles, maxSizeBytes, accept, onChange, onBlur, maxSizeMB]);
 
   // Drag and drop handlers
   const handleDragEnter = useCallback((e: React.DragEvent<HTMLDivElement>) => {
@@ -138,7 +138,7 @@ export default function MultiFileUpload({
     if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
       addFiles(Array.from(e.dataTransfer.files));
     }
-  }, []);
+  }, [addFiles]);
 
   // Get the label for the file input button
   const getButtonLabel = () => {

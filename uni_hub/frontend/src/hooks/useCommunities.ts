@@ -1,7 +1,6 @@
-import { useCallback, useMemo } from 'react';
+import { useMemo } from 'react';
 import { communityApi } from '@/services';
-import { CommunityFilters } from '@/types/api';
-import { Community } from '@/types/community';
+import { CommunityFilters, PostFilters } from '@/types/api';
 import useApi from './useApi';
 
 /**
@@ -79,7 +78,7 @@ export function useCommunityMembers(slug: string, role?: string) {
 /**
  * Hook for community posts with filters
  */
-export function useCommunityPosts(slug: string, filters?: any) {
+export function useCommunityPosts(slug: string, filters?: PostFilters) {
   // Convert filters to dependency array
   const filterDeps = useMemo(() => {
     if (!filters) return [slug];

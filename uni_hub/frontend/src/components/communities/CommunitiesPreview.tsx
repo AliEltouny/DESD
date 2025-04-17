@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from "react";
 import Link from "next/link";
+import Image from "next/image";
 import { getCommunities } from "@/services/communityService";
+import { Community } from "@/types/community";
 import Card from "@/components/ui/Card";
 import { getMediaUrl } from "@/services/api";
 
@@ -13,7 +15,7 @@ const CommunitiesPreview: React.FC<CommunitiesPreviewProps> = ({
   className = "",
   userId,
 }) => {
-  const [communities, setCommunities] = useState<any[]>([]);
+  const [communities, setCommunities] = useState<Community[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -33,7 +35,7 @@ const CommunitiesPreview: React.FC<CommunitiesPreviewProps> = ({
         }
 
         setCommunities(data.slice(0, 3)); // Show max 3 communities
-      } catch (err) {
+      } catch (err: unknown) {
         console.error("Failed to load communities:", err);
         setError("Could not load communities");
       } finally {
@@ -99,33 +101,20 @@ const CommunitiesPreview: React.FC<CommunitiesPreviewProps> = ({
             className="flex items-center space-x-3 p-2 rounded-lg hover:bg-gray-50 transition-colors"
           >
             {/* Community Image */}
-            <div className="flex-shrink-0">
+            <div className="flex-shrink-0 relative h-12 w-12 rounded-lg overflow-hidden">
               {community.image ? (
-                <img
+                <Image
                   src={getMediaUrl(community.image)}
                   alt={community.name}
-                  className="h-12 w-12 rounded-lg object-cover"
+                  fill
+                  style={{ objectFit: "cover" }}
+                  className="rounded-lg"
                   onError={(e) => {
-                    e.currentTarget.onerror = null;
-                    // Show initials instead
-                    if (e.currentTarget.parentElement) {
-                      const initials = community.name
-                        .split(" ")
-                        .map((w: string) => w[0])
-                        .join("")
-                        .toUpperCase()
-                        .substring(0, 2);
-
-                      e.currentTarget.parentElement.innerHTML = `
-                        <div class="flex items-center justify-center h-12 w-12 rounded-lg bg-blue-100 text-blue-600 font-semibold">
-                          ${initials}
-                        </div>
-                      `;
-                    }
+                    (e.target as HTMLImageElement).style.display = 'none';
                   }}
                 />
               ) : (
-                <div className="flex items-center justify-center h-12 w-12 rounded-lg bg-blue-100 text-blue-600 font-semibold">
+                <div className="flex items-center justify-center h-full w-full bg-blue-100 text-blue-600 font-semibold">
                   {community.name
                     .split(" ")
                     .map((w: string) => w[0])

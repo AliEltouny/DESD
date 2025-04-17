@@ -1,5 +1,6 @@
 import React from "react";
 import Link from "next/link";
+import Image from "next/image";
 import Card from "../ui/Card";
 
 interface Connection {
@@ -72,12 +73,13 @@ const RecommendedConnections: React.FC<RecommendedConnectionsProps> = ({
             className="flex items-center justify-between py-2"
           >
             <div className="flex items-center">
-              <div className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center text-blue-600 text-sm font-medium">
+              <div className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center text-blue-600 text-sm font-medium relative overflow-hidden">
                 {connection.avatar ? (
-                  <img
+                  <Image
                     src={connection.avatar}
                     alt={connection.name}
-                    className="w-10 h-10 rounded-full"
+                    fill
+                    style={{ objectFit: "cover" }}
                   />
                 ) : (
                   getInitials(connection.name)

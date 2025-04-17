@@ -5,17 +5,49 @@ import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { useAuth } from '@/contexts/AuthContext';
 import { getCommunity, getCommunityAnalytics } from '@/services/communityService';
+import { Community } from '@/types/community'; // Import Community type from its source
+
+// Define Types for Analytics Data
+interface EngagementStats {
+  total_posts: number;
+  total_comments: number;
+  total_upvotes: number;
+  active_members: number;
+}
+
+interface GrowthMetrics {
+  new_members_past_week: number;
+  new_members_past_month: number;
+  total_members: number;
+}
+
+interface PostActivity {
+  most_active_day: string | null;
+  posts_per_day: Record<string, number>; // Date string to count
+}
+
+interface AnalyticsData {
+  community_id: number;
+  engagement: EngagementStats;
+  growth: GrowthMetrics;
+  activity: PostActivity;
+}
+
+// Function to calculate bar height percentage
+const calculateBarHeight = (count: number, maxCount: number): string => {
+  const percentage = Number(count / Math.max(maxCount, 1)) * 100;
+  return `${Math.max(20, percentage)}%`;
+};
 
 export default function CommunityAnalyticsPage() {
   const { slug } = useParams();
   const router = useRouter();
   const { user, isAuthenticated } = useAuth();
   
-  const [community, setCommunity] = useState<any>(null);
-  const [analytics, setAnalytics] = useState<any>(null);
+  const [community, setCommunity] = useState<Community | null>(null);
+  const [analytics, setAnalytics] = useState<AnalyticsData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [isAdmin, setIsAdmin] = useState(false);
 
   useEffect(() => {
     // Don't do anything until auth state is fully initialized
@@ -38,25 +70,13 @@ export default function CommunityAnalyticsPage() {
         
         // Fetch community data first
         console.log("Fetching community data for", slug);
-        const communityData = await getCommunity(slug as string);
+        const [communityData, analyticsData] = await Promise.all([
+          getCommunity(slug as string),
+          getCommunityAnalytics(slug as string)
+        ]);
         setCommunity(communityData);
-        
-        // Check permissions
-        const userIsAdmin = communityData.membership_role === 'admin' || 
-                          (communityData.creator?.id === user?.id);
-        
-        setIsAdmin(userIsAdmin);
-        
-        if (!userIsAdmin) {
-          setError("You don't have permission to view analytics. Only community admins can access this page.");
-          setLoading(false);
-          return;
-        }
-        
-        // Fetch analytics data
-        console.log("Fetching analytics data");
-        const analyticsData = await getCommunityAnalytics(slug as string);
-        setAnalytics(analyticsData);
+        // Assert the type before setting state
+        setAnalytics(analyticsData as AnalyticsData);
       } catch (err) {
         console.error('Failed to load data:', err);
         setError('Failed to load community data. The community may not exist or has been deleted.');
@@ -152,15 +172,15 @@ export default function CommunityAnalyticsPage() {
             <div className="bg-green-50 rounded-lg p-4">
               <h3 className="text-sm font-medium text-green-800 mb-1">Total Posts</h3>
               <div className="text-3xl font-bold text-green-900">
-                {analytics?.engagement_stats?.total_posts || 0}
+                {analytics?.engagement?.total_posts || 0}
               </div>
             </div>
             
             <div className="bg-purple-50 rounded-lg p-4">
               <h3 className="text-sm font-medium text-purple-800 mb-1">Total Engagement</h3>
               <div className="text-3xl font-bold text-purple-900">
-                {(analytics?.engagement_stats?.total_upvotes || 0) + 
-                 (analytics?.engagement_stats?.total_comments || 0)}
+                {(analytics?.engagement?.total_upvotes || 0) + 
+                 (analytics?.engagement?.total_comments || 0)}
               </div>
             </div>
           </div>
@@ -177,28 +197,28 @@ export default function CommunityAnalyticsPage() {
               <div className="flex justify-between items-center mb-2">
                 <span className="text-gray-600">Upvotes</span>
                 <span className="font-semibold">
-                  {analytics?.engagement_stats?.avg_upvotes_per_post?.toFixed(1) || '0.0'}
+                  {analytics?.engagement?.active_members?.toFixed(1) || '0.0'}
                 </span>
               </div>
               
               <div className="w-full bg-gray-200 rounded-full h-2.5">
                 <div 
                   className="bg-blue-600 h-2.5 rounded-full" 
-                  style={{ width: `${Math.min(100, (analytics?.engagement_stats?.avg_upvotes_per_post || 0) * 10)}%` }}
+                  style={{ width: `${Math.min(100, (analytics?.engagement?.active_members || 0) * 10)}%` }}
                 ></div>
               </div>
               
               <div className="flex justify-between items-center mt-4 mb-2">
                 <span className="text-gray-600">Comments</span>
                 <span className="font-semibold">
-                  {analytics?.engagement_stats?.avg_comments_per_post?.toFixed(1) || '0.0'}
+                  {analytics?.engagement?.total_comments?.toFixed(1) || '0.0'}
                 </span>
               </div>
               
               <div className="w-full bg-gray-200 rounded-full h-2.5">
                 <div 
                   className="bg-green-600 h-2.5 rounded-full" 
-                  style={{ width: `${Math.min(100, (analytics?.engagement_stats?.avg_comments_per_post || 0) * 10)}%` }}
+                  style={{ width: `${Math.min(100, (analytics?.engagement?.total_comments || 0) * 10)}%` }}
                 ></div>
               </div>
             </div>
@@ -209,14 +229,14 @@ export default function CommunityAnalyticsPage() {
               <div className="flex justify-between mb-1">
                 <span className="text-sm text-gray-600">Upvotes</span>
                 <span className="text-sm font-medium text-gray-900">
-                  {analytics?.engagement_stats?.total_upvotes || 0}
+                  {analytics?.engagement?.total_upvotes || 0}
                 </span>
               </div>
               <div className="w-full bg-gray-200 rounded-full h-2">
                 <div 
                   className="bg-blue-600 h-2 rounded-full"
                   style={{ 
-                    width: `${Math.min(100, (analytics?.engagement_stats?.total_upvotes / (analytics?.engagement_stats?.total_upvotes + analytics?.engagement_stats?.total_comments || 1) * 100) || 0)}%` 
+                    width: `${Math.min(100, ((analytics?.engagement?.total_upvotes || 0) / ((analytics?.engagement?.total_upvotes || 0) + (analytics?.engagement?.total_comments || 0) || 1) * 100) || 0)}%` 
                   }}
                 ></div>
               </div>
@@ -224,14 +244,14 @@ export default function CommunityAnalyticsPage() {
               <div className="flex justify-between mt-3 mb-1">
                 <span className="text-sm text-gray-600">Comments</span>
                 <span className="text-sm font-medium text-gray-900">
-                  {analytics?.engagement_stats?.total_comments || 0}
+                  {analytics?.engagement?.total_comments || 0}
                 </span>
               </div>
               <div className="w-full bg-gray-200 rounded-full h-2">
                 <div 
                   className="bg-green-600 h-2 rounded-full"
                   style={{ 
-                    width: `${Math.min(100, (analytics?.engagement_stats?.total_comments / (analytics?.engagement_stats?.total_upvotes + analytics?.engagement_stats?.total_comments || 1) * 100) || 0)}%` 
+                    width: `${Math.min(100, ((analytics?.engagement?.total_comments || 0) / ((analytics?.engagement?.total_upvotes || 0) + (analytics?.engagement?.total_comments || 0) || 1) * 100) || 0)}%`
                   }}
                 ></div>
               </div>
@@ -244,22 +264,15 @@ export default function CommunityAnalyticsPage() {
           {/* Member Growth */}
           <div className="bg-white rounded-lg shadow-sm p-6">
             <h2 className="text-xl font-semibold text-gray-900 mb-4">Member Growth</h2>
-            {analytics?.member_growth?.daily?.length > 0 ? (
+            {(analytics?.growth?.new_members_past_week || 0) > 0 ? (
               <div className="h-64 flex items-end space-x-1">
-                {analytics.member_growth.daily.map((day: any, i: number) => (
-                  <div key={i} className="flex-1 flex flex-col items-center">
                     <div 
                       className="w-full bg-blue-500 hover:bg-blue-600 transition-colors rounded-t-sm"
                       style={{ 
-                        height: `${Math.max(20, (day.count / Math.max(...analytics.member_growth.daily.map((d: any) => d.count), 1)) * 100)}%`,
-                        minHeight: day.count > 0 ? '20px' : '2px'
+                    height: `${Math.max(20, ((analytics?.growth?.new_members_past_week || 0) / (analytics?.growth?.total_members || 1) * 100) || 0)}%`,
+                    minHeight: '20px'
                       }}
                     ></div>
-                    <div className="text-xs text-gray-500 mt-2 transform -rotate-45 origin-top-left truncate w-10 overflow-hidden">
-                      {new Date(day.day).toLocaleDateString(undefined, {day: 'numeric', month: 'short'})}
-                    </div>
-                  </div>
-                ))}
               </div>
             ) : (
               <div className="h-64 flex items-center justify-center border border-gray-200 rounded-lg">
@@ -271,19 +284,19 @@ export default function CommunityAnalyticsPage() {
           {/* Post Activity */}
           <div className="bg-white rounded-lg shadow-sm p-6">
             <h2 className="text-xl font-semibold text-gray-900 mb-4">Post Activity</h2>
-            {analytics?.post_activity?.daily?.length > 0 ? (
+            {analytics?.activity?.posts_per_day && Object.keys(analytics.activity.posts_per_day).length > 0 ? (
               <div className="h-64 flex items-end space-x-1">
-                {analytics.post_activity.daily.map((day: any, i: number) => (
-                  <div key={i} className="flex-1 flex flex-col items-center">
+                {Object.entries(analytics.activity.posts_per_day).map(([date, count]) => (
+                  <div key={date} className="flex-1 flex flex-col items-center">
                     <div 
                       className="w-full bg-green-500 hover:bg-green-600 transition-colors rounded-t-sm"
                       style={{ 
-                        height: `${Math.max(20, (day.count / Math.max(...analytics.post_activity.daily.map((d: any) => d.count), 1)) * 100)}%`,
-                        minHeight: day.count > 0 ? '20px' : '2px'
+                        height: calculateBarHeight(count, Math.max(...Object.values(analytics.activity.posts_per_day))),
+                        minHeight: count > 0 ? '20px' : '2px'
                       }}
                     ></div>
                     <div className="text-xs text-gray-500 mt-2 transform -rotate-45 origin-top-left truncate w-10 overflow-hidden">
-                      {new Date(day.day).toLocaleDateString(undefined, {day: 'numeric', month: 'short'})}
+                      {date}
                     </div>
                   </div>
                 ))}
@@ -300,9 +313,10 @@ export default function CommunityAnalyticsPage() {
         <div className="bg-white rounded-lg shadow-sm p-6">
           <h2 className="text-xl font-semibold text-gray-900 mb-4">Top Contributors</h2>
           
-          {analytics?.top_contributors?.length > 0 ? (
+          {(analytics?.growth?.total_members || 0) > 0 ? (
             <div className="overflow-x-auto">
-              <table className="min-w-full divide-y divide-gray-200">
+              <h3 className="text-md font-medium text-gray-700 mb-3">Most Active (Posts)</h3>
+              <table className="min-w-full divide-y divide-gray-200 mb-6">
                 <thead className="bg-gray-50">
                   <tr>
                     <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
@@ -312,33 +326,21 @@ export default function CommunityAnalyticsPage() {
                       User
                     </th>
                     <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Posts
-                    </th>
-                    <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Contribution %
+                      Contributions
                     </th>
                   </tr>
                 </thead>
                 <tbody className="bg-white divide-y divide-gray-200">
-                  {analytics.top_contributors.map((contributor: any, index: number) => (
-                    <tr key={contributor.author_id || index}>
+                  {Object.entries(analytics?.activity?.posts_per_day || {}).map(([date, count], index) => (
+                    <tr key={date}>
                       <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
                         {index + 1}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                        {contributor.username || contributor.full_name || "Anonymous User"}
+                        {date}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                        {contributor.post_count}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                        {((contributor.post_count / (analytics.engagement_stats.total_posts || 1)) * 100).toFixed(1)}%
-                        <div className="w-24 bg-gray-200 rounded-full h-1.5 mt-1">
-                          <div 
-                            className="bg-blue-600 h-1.5 rounded-full" 
-                            style={{ width: `${(contributor.post_count / (analytics.engagement_stats.total_posts || 1)) * 100}%` }}
-                          ></div>
-                        </div>
+                        {count}
                       </td>
                     </tr>
                   ))}

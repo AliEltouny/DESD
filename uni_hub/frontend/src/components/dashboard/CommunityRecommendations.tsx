@@ -2,9 +2,11 @@
 
 import React, { useState, useEffect } from "react";
 import Link from "next/link";
+import Image from "next/image";
 import { getCommunities } from "@/services/communityService";
 import { Community } from "@/types/community";
 import Card from "@/components/ui/Card";
+import { getMediaUrl } from "@/services/api";
 
 const CommunityRecommendations: React.FC<{ className?: string }> = ({
   className = "",
@@ -32,7 +34,7 @@ const CommunityRecommendations: React.FC<{ className?: string }> = ({
               (community) =>
                 community &&
                 typeof community === "object" &&
-                !community.is_member
+                !(community.is_member ?? false)
             )
           );
         } else {
@@ -109,10 +111,12 @@ const CommunityRecommendations: React.FC<{ className?: string }> = ({
                   <div className="flex-shrink-0">
                     {community.image ? (
                       <div className="relative w-12 h-12 rounded-lg overflow-hidden">
-                        <img
-                          src={community.image}
+                        <Image
+                          src={getMediaUrl(community.image)}
                           alt={community.name}
-                          className="w-full h-full object-cover"
+                          fill
+                          style={{ objectFit: "cover" }}
+                          className="rounded-lg"
                         />
                       </div>
                     ) : (

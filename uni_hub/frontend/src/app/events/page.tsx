@@ -31,7 +31,7 @@ export default function EventsPage() {
 
           <h2 className="text-2xl font-semibold text-gray-800 mb-2">Events Coming Soon</h2>
           <p className="text-gray-600 mb-6">
-          We're waiting for Rayan to integrate the events platform.
+          We&apos;re waiting for Rayan to integrate the events platform.
           </p>
           
           <p className="text-gray-600 mb-6">

@@ -1,5 +1,14 @@
 import api from '../apiClient';
 import { handleApiError } from '../errorHandling';
+import { Testimonial } from '@/types/testimonial'; // Import Testimonial type
+
+// Define a type for the testimonial data payload
+interface TestimonialPayload {
+  name: string;
+  role: string;
+  text: string;
+  image?: File | string; // Allow File for upload, string for URL
+}
 
 /**
  * Testimonial API - Handles all testimonial-related API operations
@@ -8,32 +17,29 @@ class TestimonialAPI {
   /**
    * Get testimonials with optional filtering
    */
-  async getTestimonials() {
+  async getTestimonials(limit?: number): Promise<Testimonial[]> {
     try {
-      const response = await api.get('/testimonials/');
-      return response.data;
-    } catch (error) {
-      return handleApiError(error, "fetching testimonials", {
-        fallbackValue: { count: 0, results: [] },
-        rethrow: false
+      const response = await api.get('/testimonials/', {
+        params: limit ? { limit } : {},
       });
+      return response.data.results || response.data;
+    } catch (error) {
+      return handleApiError<Testimonial[]>(error, "fetching testimonials", { fallbackValue: [] });
     }
   }
 
   /**
    * Add a new testimonial
    */
-  async addTestimonial(data) {
+  async addTestimonial(data: TestimonialPayload): Promise<Testimonial> {
     try {
       const formData = new FormData();
       
       Object.entries(data).forEach(([key, value]) => {
-        if (value !== undefined && value !== null) {
-          if (key === "image" && value instanceof File) {
-            formData.append(key, value);
-          } else {
-            formData.append(key, value.toString());
-          }
+        if (value instanceof File) {
+          formData.append(key, value);
+        } else if (value !== undefined && value !== null) {
+          formData.append(key, value.toString());
         }
       });
 
@@ -45,7 +51,7 @@ class TestimonialAPI {
       
       return response.data;
     } catch (error) {
-      return handleApiError(error, "adding testimonial", {
+      return handleApiError<Testimonial>(error, "adding testimonial", {
         rethrow: true,
         defaultMessage: "Failed to add testimonial. Please try again."
       });

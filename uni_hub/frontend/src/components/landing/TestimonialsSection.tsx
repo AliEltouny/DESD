@@ -1,19 +1,9 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
+import Image from "next/image";
 import { testimonialApi, getMediaUrl } from "@/services";
-
-// Define the Testimonial interface
-interface Testimonial {
-  id?: number;
-  name: string;
-  role: string;
-  university: string;
-  content: string;
-  image?: string;
-  image_url?: string;
-  isMock?: boolean;
-}
+import { Testimonial } from "@/types/testimonial";
 
 // Fallback mock data
 const mockTestimonials: Testimonial[] = [
@@ -47,8 +37,6 @@ const TestimonialsSection = () => {
   const [testimonials, setTestimonials] = useState<Testimonial[]>([]);
   const [activeIndex, setActiveIndex] = useState(0);
   const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const [useFallback, setUseFallback] = useState(false);
 
   // Fetch testimonials from API
   useEffect(() => {
@@ -56,31 +44,19 @@ const TestimonialsSection = () => {
       try {
         setIsLoading(true);
         
-        // Attempt to fetch from API
-        const response = await testimonialApi.getTestimonials();
-        console.log("Testimonials API response:", response);
-        
-        // Check if we have results from the API response
-        if (response && response.results && response.results.length > 0) {
-          // Process testimonials to ensure proper image URLs
-          const processedTestimonials = response.results.map(
-            (testimonial: any) => {
-              // Ensure all image URLs use localhost instead of backend container name
-              let imageUrl = testimonial.image_url || testimonial.image;
-              if (imageUrl && imageUrl.includes('backend:8000')) {
-                imageUrl = imageUrl.replace('backend:8000', 'localhost:8000');
-              }
-              
-              return {
-                ...testimonial,
-                image: imageUrl || getMediaUrl(testimonial.image),
-              };
+        const response = await testimonialApi.getTestimonials(3); // Limit to 3
+        // Directly use the response array
+        if (response && response.length > 0) {
+          // Process testimonials (remove complex image pre-processing)
+          const processedTestimonials = response.map(
+            (testimonial: Testimonial) => {
+              // Simplify: return testimonial data directly
+              return testimonial;
             }
           );
 
-          console.log("Processed testimonials:", processedTestimonials);
+          console.log("Raw testimonials:", processedTestimonials);
           setTestimonials(processedTestimonials);
-          setUseFallback(false);
           console.log("Using real testimonials from backend");
         } else {
           // Use mock data as fallback
@@ -90,9 +66,9 @@ const TestimonialsSection = () => {
             isMock: true // Add a flag to identify mock testimonials
           }));
           setTestimonials(processedMockTestimonials);
-          setUseFallback(true);
+          console.log("Using mock data as fallback");
         }
-      } catch (err) {
+      } catch (err: unknown) {
         console.error("Failed to fetch testimonials:", err);
         // Use mock data as fallback on error
         const processedMockTestimonials = mockTestimonials.map(testimonial => ({
@@ -100,7 +76,7 @@ const TestimonialsSection = () => {
           isMock: true // Add a flag to identify mock testimonials
         }));
         setTestimonials(processedMockTestimonials);
-        setUseFallback(true);
+        console.log("Using mock data as fallback on error");
       } finally {
         setIsLoading(false);
       }
@@ -155,10 +131,6 @@ const TestimonialsSection = () => {
           <div className="flex justify-center items-center h-64">
             <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500"></div>
           </div>
-        ) : error ? (
-          <div className="text-center p-8 bg-red-50 rounded-lg border border-red-100">
-            <p className="text-red-800">{error}</p>
-          </div>
         ) : (
           <div className="relative">
             {/* Testimonial Cards */}
@@ -171,16 +143,12 @@ const TestimonialsSection = () => {
                   <div key={index} className="w-full flex-shrink-0 px-4">
                     <div className="bg-white rounded-xl shadow-xl p-8 border border-gray-100">
                       <div className="flex items-center mb-6">
-                        <div className="h-12 w-12 flex-shrink-0 overflow-hidden rounded-full border-2 border-blue-500">
-                          <img
-                            src={testimonial.image}
+                        <div className="h-12 w-12 flex-shrink-0 overflow-hidden rounded-full border-2 border-blue-500 relative">
+                          <Image
+                            src={testimonial.isMock ? (testimonial.image ?? '/placeholders/avatar.png') : getMediaUrl(testimonial.image ?? null)}
                             alt={`${testimonial.name} profile`}
-                            className="h-full w-full object-cover"
-                            onError={(e) => {
-                              e.currentTarget.onerror = null;
-                              e.currentTarget.src =
-                                "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='100' height='100' viewBox='0 0 100 100'%3E%3Ccircle cx='50' cy='50' r='50' fill='%23e5e7eb'/%3E%3Cpath d='M36 40a14 14 0 1 1 28 0 14 14 0 0 1-28 0zm33 25.5c0-7.2-15-11-18.5-11-3.5 0-18.5 3.8-18.5 11V70h37v-4.5z' fill='%23a1a1aa'/%3E%3C/svg%3E";
-                            }}
+                            fill
+                            style={{ objectFit: "cover" }}
                           />
                         </div>
                         <div className="ml-4">
@@ -196,7 +164,7 @@ const TestimonialsSection = () => {
                         </div>
                       </div>
                       <p className="text-lg text-gray-700 italic">
-                        "{testimonial.content || "Uni Hub has been a great platform for connecting with my fellow students!"}"
+                        &quot;{testimonial.content || "Uni Hub has been a great platform for connecting with my fellow students!"}&quot;
                       </p>
                       <div className="mt-6 flex items-center">
                         <div className="flex">

@@ -2,40 +2,39 @@
 
 import React, { useState, Suspense } from "react";
 import Link from "next/link";
-import { useRouter, useSearchParams } from "next/navigation";
 import AuthLayout from "@/components/layouts/AuthLayout";
 import Input from "@/components/ui/Input";
 import Button from "@/components/ui/Button";
 import { useAuth } from "@/contexts/AuthContext";
 
 // Create a client component that uses useSearchParams
-function LoginForm() {
-  const router = useRouter();
-  const searchParams = useSearchParams();
-  const callbackUrl = searchParams.get("callbackUrl") || "/dashboard";
-
-  const { login } = useAuth();
+const LoginForm = () => {
+  const { login, isLoading } = useAuth();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [error, setError] = useState<string | null>(null);
-  const [isLoading, setIsLoading] = useState(false);
   const [rememberMe, setRememberMe] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  // Redirect if already authenticated
 
   // In LoginForm component
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
-    setIsLoading(true);
 
     try {
       await login(email, password, rememberMe);
       // The redirect will be handled by the login function
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error("Login error:", err);
-      setError(
-        err.response?.data?.message || "Invalid credentials. Please try again."
-      );
-      setIsLoading(false);
+      let message = "Invalid credentials. Please try again.";
+      if (err && typeof err === 'object' && 'response' in err && err.response && typeof err.response === 'object' && 'data' in err.response && err.response.data && typeof err.response.data === 'object' && 'message' in err.response.data) {
+        message = (err.response.data as { message: string }).message || message;
+      }
+      if (message === "Invalid credentials") {
+        message = "Incorrect email or password.";
+      }
+      setError(message);
     }
   };
 
@@ -268,13 +267,7 @@ function LoginForm() {
 const LoginPage = () => {
   return (
     <AuthLayout title="Welcome Back" subtitle="Sign in to continue to Uni Hub">
-      <Suspense
-        fallback={
-          <div className="flex justify-center p-8">
-            <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500"></div>
-          </div>
-        }
-      >
+      <Suspense fallback={<div>Loading...</div>}>
         <LoginForm />
       </Suspense>
     </AuthLayout>

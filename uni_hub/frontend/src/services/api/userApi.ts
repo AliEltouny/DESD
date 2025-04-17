@@ -1,6 +1,7 @@
 import api from '../apiClient';
-import { handleApiError, processApiResponse } from '../errorHandling';
-import { User, UserProfile, PaginatedResponse } from '@/types/api';
+import { handleApiError } from '../errorHandling';
+import { PaginatedResponse } from '@/types/api';
+import { User, UserProfile } from '@/types/user';
 
 /**
  * UserAPI - Handles user-related API operations
@@ -59,9 +60,9 @@ class UserAPI {
       const response = await api.get('/users', {
         params: { page, page_size: pageSize }
       });
-      return processApiResponse<User>(response);
+      return response.data as PaginatedResponse<User>;
     } catch (error) {
-      return handleApiError(error, "fetching users", {
+      return handleApiError<PaginatedResponse<User>>(error, "fetching users", {
         rethrow: true,
         defaultMessage: "Failed to load users."
       });
@@ -76,9 +77,9 @@ class UserAPI {
       const response = await api.get('/users/search', {
         params: { query, page, page_size: pageSize }
       });
-      return processApiResponse<User>(response);
+      return response.data as PaginatedResponse<User>;
     } catch (error) {
-      return handleApiError(error, "searching users", {
+      return handleApiError<PaginatedResponse<User>>(error, "searching users", {
         rethrow: true,
         defaultMessage: "Failed to search users."
       });
@@ -87,5 +88,4 @@ class UserAPI {
 }
 
 // Export singleton instance
-export const userApi = new UserAPI();
-export default userApi; 
+export const userApi = new UserAPI(); 

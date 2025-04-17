@@ -7,6 +7,7 @@ import { createCommunity } from "@/services/communityService";
 import MediaUpload from "@/components/ui/MediaUpload";
 import DashboardLayout from "@/components/layouts/DashboardLayout";
 import CategorySelect from "@/components/ui/CategorySelect";
+import { CommunityFormData } from "@/types/community";
 
 export default function CreateCommunityPage() {
   const router = useRouter();
@@ -93,12 +94,12 @@ export default function CreateCommunityPage() {
       const formData: CommunityFormData = {
         name,
         description,
-        shortDescription,
+        short_description: shortDescription,
         category,
         tags,
         rules,
-        isPrivate,
-        requiresApproval,
+        is_private: isPrivate,
+        requires_approval: requiresApproval,
         image: image,
         banner: banner,
       };
@@ -111,11 +112,11 @@ export default function CreateCommunityPage() {
       
       // Redirect to the new community
       router.push(`/communities/${response.slug}`);
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Error creating community:", error);
-      setSubmitError(
-        error.message || "Failed to create community. Please try again."
-      );
+      // Check if error has a message property
+      const message = (error instanceof Error) ? error.message : "Failed to create community. Please try again.";
+      setSubmitError(message);
     } finally {
       setIsSubmitting(false);
     }
@@ -226,13 +227,13 @@ export default function CreateCommunityPage() {
                         name="name"
                         value={name}
                         onChange={(e) => setName(e.target.value)}
-                        className={`w-full px-4 py-3 border rounded-md shadow-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all text-gray-900 ${
+                        className={`w-full px-4 py-3 border rounded-md shadow-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all text-gray-900 font-normal ${
                           errors.name
                             ? "border-red-500 bg-red-50"
                             : "border-gray-300 hover:border-gray-400"
                         }`}
                         placeholder="Enter a unique name for your community"
-                        style={{ color: "#111827" }}
+                        style={{ color: "#111827", fontWeight: "normal" }}
                       />
                       {errors.name && (
                         <div className="mt-2 flex items-start">
@@ -269,13 +270,13 @@ export default function CreateCommunityPage() {
                       value={description}
                       onChange={(e) => setDescription(e.target.value)}
                       rows={4}
-                      className={`w-full px-4 py-3 border rounded-md shadow-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all text-gray-900 ${
+                      className={`w-full px-4 py-3 border rounded-md shadow-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all text-gray-900 font-normal ${
                         errors.description
                           ? "border-red-500 bg-red-50"
                           : "border-gray-300 hover:border-gray-400"
                       }`}
                       placeholder="Describe what your community is about"
-                      style={{ color: "#111827" }}
+                      style={{ color: "#111827", fontWeight: "normal" }}
                     />
                     {errors.description && (
                       <div className="mt-2 flex items-start">
@@ -314,13 +315,13 @@ export default function CreateCommunityPage() {
                         name="short_description"
                         value={shortDescription}
                         onChange={(e) => setShortDescription(e.target.value)}
-                        className={`w-full px-4 py-3 border rounded-md shadow-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all text-gray-900 ${
+                        className={`w-full px-4 py-3 border rounded-md shadow-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all text-gray-900 font-normal ${
                           errors.shortDescription
                             ? "border-red-500 bg-red-50"
                             : "border-gray-300 hover:border-gray-400"
                         }`}
                         placeholder="A brief summary for preview cards (optional)"
-                        style={{ color: "#111827" }}
+                        style={{ color: "#111827", fontWeight: "normal" }}
                       />
                       {errors.shortDescription && (
                         <div className="mt-2 flex items-start">
@@ -343,7 +344,7 @@ export default function CreateCommunityPage() {
                         </div>
                       )}
                       <p className="mt-2 text-sm text-gray-500">
-                        If left empty, we'll use a truncated version of the main
+                        If left empty, we&apos;ll use a truncated version of the main
                         description.
                       </p>
                     </div>
@@ -360,6 +361,7 @@ export default function CreateCommunityPage() {
                       options={categories}
                       required
                       error={errors.category}
+                      className="font-normal"
                     />
                   </div>
 
@@ -379,9 +381,9 @@ export default function CreateCommunityPage() {
                           name="tags"
                           value={tags}
                           onChange={(e) => setTags(e.target.value)}
-                          className="w-full px-4 py-3 border border-gray-300 rounded-md shadow-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all hover:border-gray-400 text-gray-900"
+                          className="w-full px-4 py-3 border border-gray-300 rounded-md shadow-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all hover:border-gray-400 text-gray-900 font-normal"
                           placeholder="Enter comma-separated tags (e.g. engineering, robotics, computer science)"
-                          style={{ color: "#111827" }}
+                          style={{ color: "#111827", fontWeight: "normal" }}
                         />
                         {tags && (
                           <button
@@ -484,23 +486,26 @@ export default function CreateCommunityPage() {
                   </h2>
 
                   {/* Community Rules */}
-                  <div className="mb-4">
+                  <div className="mb-6">
                     <label
                       htmlFor="rules"
                       className="block text-sm font-medium text-gray-700 mb-1"
                     >
-                      Community Rules
+                      Community Rules (Optional)
                     </label>
                     <textarea
                       id="rules"
                       name="rules"
                       value={rules}
                       onChange={(e) => setRules(e.target.value)}
-                      rows={4}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 text-gray-900"
-                      placeholder="Enter community rules or guidelines (optional)"
-                      style={{ color: "#111827" }}
+                      rows={3}
+                      className="w-full px-4 py-3 border border-gray-300 rounded-md shadow-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all hover:border-gray-400 text-gray-900 font-normal"
+                      placeholder="Enter any specific rules or guidelines for your community"
+                      style={{ color: "#111827", fontWeight: "normal" }}
                     />
+                    <p className="mt-2 text-sm text-gray-500">
+                      Clear community rules help establish expectations and create a positive environment.
+                    </p>
                   </div>
 
                   {/* Privacy Settings */}
@@ -524,11 +529,12 @@ export default function CreateCommunityPage() {
                         <div className="ml-3 text-sm">
                           <label
                             htmlFor="is_private"
-                            className="font-medium text-gray-700"
+                            className="font-normal text-gray-700"
+                            style={{ fontWeight: "normal" }}
                           >
                             Private Community
                           </label>
-                          <p className="text-gray-500">
+                          <p className="text-gray-500 font-normal" style={{ fontWeight: "normal" }}>
                             Only members can see the content of this community.
                           </p>
                         </div>
@@ -550,11 +556,12 @@ export default function CreateCommunityPage() {
                         <div className="ml-3 text-sm">
                           <label
                             htmlFor="requires_approval"
-                            className="font-medium text-gray-700"
+                            className="font-normal text-gray-700"
+                            style={{ fontWeight: "normal" }}
                           >
                             Require Admin Approval
                           </label>
-                          <p className="text-gray-500">
+                          <p className="text-gray-500 font-normal" style={{ fontWeight: "normal" }}>
                             New members must be approved by an admin before they
                             can participate.
                           </p>
@@ -570,17 +577,19 @@ export default function CreateCommunityPage() {
                 <button
                   type="button"
                   onClick={() => router.back()}
-                  className="px-5 py-2.5 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors mr-3"
+                  className="px-5 py-2.5 border border-gray-300 shadow-sm text-sm font-normal rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors mr-3"
+                  style={{ fontWeight: "normal" }}
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
                   disabled={isSubmitting}
-                  className="inline-flex items-center px-5 py-2.5 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors disabled:opacity-50"
+                  className="inline-flex items-center px-5 py-2.5 border border-transparent text-sm font-normal rounded-md shadow-sm text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors disabled:opacity-50"
                   style={{
                     height: '42px',
-                    transform: 'none'
+                    transform: 'none',
+                    fontWeight: "normal"
                   }}
                 >
                   {isSubmitting ? (

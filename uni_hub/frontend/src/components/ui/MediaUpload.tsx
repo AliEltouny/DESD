@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useRef, useEffect } from 'react';
+import Image from 'next/image';
 import ImageCropper from './ImageCropper';
 
 interface MediaUploadProps {
@@ -197,9 +198,11 @@ export default function MediaUpload({
 
     if (fileType === 'image' && preview) {
       return (
-        <img
+        <Image
           src={preview}
           alt="Preview"
+          fill
+          style={{ objectFit: "cover" }}
           className={getPreviewStyles()}
         />
       );
@@ -282,7 +285,8 @@ export default function MediaUpload({
               <button
                 type="button"
                 onClick={() => fileInputRef.current?.click()}
-                className="px-4 py-2 bg-white border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+                className="px-4 py-2 bg-white border border-gray-300 rounded-md shadow-sm text-sm font-normal text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+                style={{ fontWeight: "normal" }}
               >
                 Choose File
               </button>
@@ -290,7 +294,8 @@ export default function MediaUpload({
                 <button
                   type="button"
                   onClick={handleRemove}
-                  className="px-4 py-2 bg-white border border-gray-300 rounded-md shadow-sm text-sm font-medium text-red-600 hover:bg-red-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500"
+                  className="px-4 py-2 bg-white border border-gray-300 rounded-md shadow-sm text-sm font-normal text-red-600 hover:bg-red-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500"
+                  style={{ fontWeight: "normal" }}
                 >
                   Remove
                 </button>
@@ -301,7 +306,8 @@ export default function MediaUpload({
                   onClick={() => {
                     setShowCropper(true);
                   }}
-                  className="px-4 py-2 bg-white border border-gray-300 rounded-md shadow-sm text-sm font-medium text-blue-600 hover:bg-blue-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+                  className="px-4 py-2 bg-white border border-gray-300 rounded-md shadow-sm text-sm font-normal text-blue-600 hover:bg-blue-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+                  style={{ fontWeight: "normal" }}
                 >
                   Edit/Crop
                 </button>
@@ -309,7 +315,7 @@ export default function MediaUpload({
             </div>
             
             {description && (
-              <p className="text-sm text-gray-500">{description}</p>
+              <p className="text-sm text-gray-500 font-normal" style={{ fontWeight: "normal" }}>{description}</p>
             )}
             
             {(error || sizeError) && (
@@ -327,12 +333,12 @@ export default function MediaUpload({
                     d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"
                   />
                 </svg>
-                <p className="text-sm text-red-600">{sizeError || error}</p>
+                <p className="text-sm text-red-600 font-normal" style={{ fontWeight: "normal" }}>{sizeError || error}</p>
               </div>
             )}
             
             {value && (
-              <div className="text-sm text-gray-500">
+              <div className="text-sm text-gray-500 font-normal" style={{ fontWeight: "normal" }}>
                 <p>File: {value.name}</p>
                 <p>Size: {(value.size / (1024 * 1024)).toFixed(2)} MB</p>
               </div>

@@ -1,20 +1,20 @@
 "use client";
 
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef, useMemo } from "react";
 import { motion } from "framer-motion";
 
 const StatsSection = () => {
-  // Stats data
-  const stats = [
+  // Stats data (wrapped in useMemo)
+  const stats = useMemo(() => [
     { label: "Active Students", value: 334, suffix: "+", prefix: "", color: "from-blue-500/90 to-blue-700/80" },
     { label: "Universities", value: 8, suffix: "+", prefix: "", color: "from-indigo-500/90 to-indigo-700/80" },
     { label: "Communities", value: 24, suffix: "+", prefix: "", color: "from-purple-500/90 to-purple-700/80" },
     { label: "Events per Month", value: 14, suffix: "+", prefix: "", color: "from-blue-600/90 to-purple-600/80" },
-  ];
+  ], []); // Empty dependency array means it's created only once
 
   // State to track if section is in view for animation
   const [isInView, setIsInView] = useState(false);
-  const sectionRef = useRef(null);
+  const sectionRef = useRef<HTMLDivElement | null>(null); // Typed the ref
 
   // Counter animation states
   const [counters, setCounters] = useState(stats.map(() => 0));
@@ -24,21 +24,25 @@ const StatsSection = () => {
       (entries) => {
         if (entries[0].isIntersecting) {
           setIsInView(true);
+          // Optional: Unobserve after first intersection if animation only runs once
+          // observer.unobserve(entries[0].target);
         }
       },
       { threshold: 0.1 }
     );
 
-    if (sectionRef.current) {
-      observer.observe(sectionRef.current);
+    const currentRef = sectionRef.current; // Store ref value
+
+    if (currentRef) {
+      observer.observe(currentRef);
     }
 
     return () => {
-      if (sectionRef.current) {
-        observer.unobserve(sectionRef.current);
+      if (currentRef) {
+        observer.unobserve(currentRef); // Use stored value in cleanup
       }
     };
-  }, []);
+  }, []); // Empty dependency array is correct here
 
   // Animate counters when in view
   useEffect(() => {
@@ -65,9 +69,11 @@ const StatsSection = () => {
     });
 
     return () => {
-      intervals.forEach((interval) => clearInterval(interval));
+      intervals.forEach((interval) => {
+        if (interval) clearInterval(interval);
+      }); // Added check for interval existence
     };
-  }, [isInView, stats]);
+  }, [isInView, stats]); // stats is now stable due to useMemo
 
   // Animation variants for staggered animations
   const containerVariants = {

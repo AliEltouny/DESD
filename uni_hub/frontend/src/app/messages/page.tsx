@@ -30,7 +30,7 @@ export default function MessagesPage() {
 
           <h2 className="text-2xl font-semibold text-gray-800 mb-2">Messaging Coming Soon</h2>
           <p className="text-gray-600 mb-6">
-            We're waiting for Anes to integrate the messaging system.
+            We&apos;re waiting for Anes to integrate the messaging system.
           </p>
 
           <p className="text-gray-600 mb-6">

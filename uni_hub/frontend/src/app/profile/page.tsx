@@ -1,15 +1,15 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import { useRouter } from "next/navigation";
 import DashboardLayout from "@/components/layouts/DashboardLayout";
 import Input from "@/components/ui/Input";
 import Button from "@/components/ui/Button";
 import { useAuth } from "@/contexts/AuthContext";
-import { userApi } from "@/services/api";
+import { userApi } from "@/services/api/userApi";
+import { UserProfile } from "@/types/user";
+import { toast } from "react-hot-toast";
 
 const ProfilePage = () => {
-  const router = useRouter();
   const { user } = useAuth();
   const [isLoading, setIsLoading] = useState(false);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
@@ -46,22 +46,40 @@ const ProfilePage = () => {
     setSuccessMessage(null);
     setIsLoading(true);
 
-    try {
-      const dataToSubmit = {
-        ...formData,
-        academic_year: formData.academic_year
-          ? parseInt(formData.academic_year)
-          : null,
+    // Get the raw form data
+    const { academic_year: formAcademicYear, ...restFormData } = formData;
+
+    // Initialize the object for submission (without academic_year initially)
+    const dataForApi: Partial<Omit<UserProfile, 'academic_year'>> = { ...restFormData };
+
+    // Convert and add academic_year separately
+    let finalAcademicYear: number | undefined = undefined;
+    const rawYear = formAcademicYear; // Get the original string value
+    if (!(rawYear === null || rawYear === undefined || rawYear.trim() === '')) {
+      const parsedYear = parseInt(rawYear, 10);
+      if (!isNaN(parsedYear)) {
+          finalAcademicYear = parsedYear;
+      }
+    }
+
+    // Combine base data with the converted academic_year
+    const dataToSubmit: Partial<UserProfile> = {
+      ...dataForApi,
+      academic_year: finalAcademicYear,
       };
 
+    try {
       await userApi.updateProfile(dataToSubmit);
-      setSuccessMessage("Profile updated successfully!");
-    } catch (err: any) {
+      toast.success("Profile updated successfully!");
+      // Optionally refetch user data if needed
+      // fetchProfile();
+    } catch (err: unknown) {
       console.error("Profile update error:", err);
-      setError(
-        err.response?.data?.message ||
-          "Failed to update profile. Please try again."
-      );
+      let message = "Failed to update profile. Please try again.";
+      if (err && typeof err === 'object' && 'response' in err && err.response && typeof err.response === 'object' && 'data' in err.response && err.response.data && typeof err.response.data === 'object' && 'message' in err.response.data) {
+        message = (err.response.data as { message: string }).message || message;
+      }
+      setError(message);
     } finally {
       setIsLoading(false);
     }

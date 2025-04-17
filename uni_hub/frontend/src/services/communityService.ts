@@ -12,14 +12,16 @@
  */
 
 import { CommunityFormData } from "@/types/community";
-// Export the API instances from our domain-specific API modules
-import { communityApi } from './api/communityApi';
-import { postApi } from './api/postApi';
+// Import from the central services index
+import { communityApi, postApi } from '@/services'; 
+import apiClient from './apiClient';
 // Reexport all types from types/api
 import { 
   CommunityDetail, Post, PostDetail, Comment, 
   Membership, CommunityInvitation, PostFormRequest as PostFormData,
-  CommentFormRequest as CommentFormData
+  CommentFormRequest as CommentFormData,
+  CommunityFilters,
+  PostFilters
 } from '@/types/api';
 import { handleApiError } from "./errorHandling";
 import { memoryCache, localStorageCache } from "./cacheManager";
@@ -33,7 +35,7 @@ export type {
 // API functions - all now use the corresponding API modules
 
 // Communities
-export const getCommunities = async (params?: any) => {
+export const getCommunities = async (params?: CommunityFilters) => {
   return communityApi.getCommunities(params);
 };
 
@@ -81,16 +83,31 @@ export const updateCommunity = async (
   }
 };
 
-export const deleteCommunity = async (slug: string) => {
+export const deleteCommunity = async (
+  slug: string
+) => {
   // TODO: Implement deleteCommunity in communityApi
+  console.warn(`deleteCommunity for community "${slug}" is not implemented in CommunityAPI class.`);
+  // Future implementation:
+  // return communityApi.deleteCommunity(slug);
 };
 
-export const joinCommunity = async (slug: string) => {
+export const joinCommunity = async (
+  slug: string
+) => {
   // TODO: Implement joinCommunity in communityApi
+  console.warn(`joinCommunity for community "${slug}" is not implemented in CommunityAPI class.`);
+  // Future implementation:
+  // return communityApi.joinCommunity(slug);
 };
 
-export const leaveCommunity = async (slug: string) => {
+export const leaveCommunity = async (
+  slug: string
+) => {
   // TODO: Implement leaveCommunity in communityApi
+  console.warn(`leaveCommunity for community "${slug}" is not implemented in CommunityAPI class.`);
+  // Future implementation:
+  // return communityApi.leaveCommunity(slug);
 };
 
 export const getCommunityMembers = async (slug: string, role?: string) => {
@@ -102,33 +119,31 @@ export const inviteToCommunity = async (
   inviteeEmail: string,
   message?: string
 ) => {
-  return communityApi.inviteToCommunity(slug, { 
-    email: inviteeEmail, 
-    message: message || '' 
-  });
+  // TODO: Implement inviteToCommunity in communityApi
+  console.warn(`inviteToCommunity for community "${slug}" and email "${inviteeEmail}" is not implemented in CommunityAPI class.${message ? ` Message: "${message}"` : ""}`);
+  // Future implementation:
+  // return communityApi.inviteToCommunity(slug, { email: inviteeEmail, message: message || '' });
 };
 
 export const updateMemberRole = async (
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   slug: string,
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   userId: number,
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   role: string
 ) => {
-  return communityApi.updateMemberRole(slug, { user_id: userId, role });
+  // TODO: Implement updateMemberRole in communityApi
+  console.warn("updateMemberRole is not implemented in CommunityAPI class");
+  // return communityApi.updateMemberRole(slug, { user_id: userId, role }); // Removed call
 };
 
-export const approveMembership = async (
-  slug: string,
-  userId: number,
-  approve: boolean = true
-) => {
-  return communityApi.approveMembership(slug, { 
-    user_id: userId, 
-    approve 
-  });
+export const approveMembership = async (communitySlug: string, userId: number) => {
+  await apiClient.post(`/communities/${communitySlug}/members/${userId}/approve/`);
 };
 
 // Posts
-export const getPosts = async (communitySlug: string, params?: any) => {
+export const getPosts = async (communitySlug: string, params?: PostFilters) => {
   return communityApi.getPosts(communitySlug, params);
 };
 
@@ -205,4 +220,10 @@ export const upvoteComment = async (
 
 export const getCommunityAnalytics = async (communitySlug: string) => {
   return communityApi.getCommunityAnalytics(communitySlug);
+};
+
+// Uncomment function, ensure no slug parameter
+export const getInvitations = async () => {
+  const response = await apiClient.get(`/invitations/pending/`);
+  return response.data;
 };

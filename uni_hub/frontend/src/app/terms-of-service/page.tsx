@@ -93,7 +93,7 @@ const TermsOfServicePage = () => {
                 6. Changes to Terms
               </h2>
               <p className="mb-6 text-gray-800">
-                We may modify these terms at any time. We'll notify you of
+                We may modify these terms at any time. We&apos;ll notify you of
                 significant changes by email or through the platform.
               </p>
             </section>

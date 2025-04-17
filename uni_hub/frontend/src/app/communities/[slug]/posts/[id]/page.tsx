@@ -4,11 +4,11 @@ import React, { useState, useEffect } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { useAuth } from "@/contexts/AuthContext";
 import Link from "next/link";
+import Image from "next/image";
 import {
   getPost,
   getComments,
   upvotePost,
-  createComment,
   upvoteComment,
   Comment as CommentType,
   PostDetail,
@@ -18,23 +18,24 @@ import { getMediaUrl } from "@/services/api";
 import CommentItem from "@/components/communities/CommentItem";
 import CommentForm from "@/components/communities/CommentForm";
 import DashboardLayout from "@/components/layouts/DashboardLayout";
+import { toast } from "react-hot-toast";
+import api from "@/services/apiClient";
+import { mutate } from "swr";
 
 export default function PostDetailPage() {
   const { slug, id } = useParams();
   const router = useRouter();
-  const { user, isAuthenticated } = useAuth();
+  const { isAuthenticated } = useAuth();
 
   const [post, setPost] = useState<PostDetail | null>(null);
   const [comments, setComments] = useState<CommentType[]>([]);
   const [loading, setLoading] = useState(true);
-  const [commentLoading, setCommentLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [newComment, setNewComment] = useState("");
 
   useEffect(() => {
     const fetchPostData = async () => {
       try {
         setLoading(true);
-        setError(null);
 
         // Fetch post details
         const postData = await getPost(slug as string, parseInt(id as string));
@@ -43,9 +44,8 @@ export default function PostDetailPage() {
         // Fetch comments
         const commentsData = await getComments(slug as string, parseInt(id as string));
         setComments(commentsData);
-      } catch (err) {
+      } catch (err: unknown) {
         console.error("Failed to fetch post data:", err);
-        setError("Failed to load post. Please try again later.");
       } finally {
         setLoading(false);
       }
@@ -68,9 +68,8 @@ export default function PostDetailPage() {
       // Refetch post to update upvote status
       const updatedPost = await getPost(slug as string, parseInt(id as string));
       setPost(updatedPost);
-    } catch (err) {
+    } catch (err: unknown) {
       console.error("Failed to upvote post:", err);
-      setError("Failed to upvote post. Please try again.");
     }
   };
 
@@ -86,30 +85,24 @@ export default function PostDetailPage() {
       // Refetch comments to update upvote status
       const updatedComments = await getComments(slug as string, parseInt(id as string));
       setComments(updatedComments);
-    } catch (err) {
+    } catch (err: unknown) {
       console.error("Failed to upvote comment:", err);
-      setError("Failed to upvote comment. Please try again.");
     }
   };
 
-  const handleAddComment = async (content: string) => {
-    if (!isAuthenticated) {
-      router.push(`/login?redirect=/communities/${slug}/posts/${id}`);
-      return;
-    }
-
+  const handleCommentSubmit = async () => {
+    if (!newComment.trim()) return;
     try {
-      setCommentLoading(true);
-      await createComment(slug as string, parseInt(id as string), { content });
-      
-      // Refetch comments to include the new one
-      const updatedComments = await getComments(slug as string, parseInt(id as string));
-      setComments(updatedComments);
-    } catch (err) {
-      console.error("Failed to add comment:", err);
-      setError("Failed to add comment. Please try again.");
-    } finally {
-      setCommentLoading(false);
+      await api.post(`/posts/${id}/comments`, { content: newComment });
+      mutate(`/communities/${slug}/posts/${id}/comments/`);
+      mutate(`/communities/${slug}/posts/${id}/`);
+      setNewComment("");
+      toast.success("Comment added successfully!");
+    } catch (err: unknown) {
+      console.error("Error adding comment:", err);
+      toast.error(
+        "Failed to add comment. Please try again."
+      );
     }
   };
 
@@ -117,7 +110,7 @@ export default function PostDetailPage() {
   const formatDate = (dateString: string) => {
     try {
       return formatDistanceToNow(new Date(dateString), { addSuffix: true });
-    } catch (error) {
+    } catch {
       return dateString;
     }
   };
@@ -153,43 +146,6 @@ export default function PostDetailPage() {
               <div className="h-4 bg-gray-200 rounded w-full mb-2"></div>
               <div className="h-4 bg-gray-200 rounded w-3/4 mb-6"></div>
             </div>
-          </div>
-        </div>
-      </DashboardLayout>
-    );
-  }
-
-  if (error) {
-    return (
-      <DashboardLayout>
-        <div className="bg-gray-50 min-h-screen py-8">
-          <div className="max-w-4xl mx-auto px-4">
-            <div className="bg-red-50 border-l-4 border-red-400 p-4 mb-6">
-              <div className="flex">
-                <div className="flex-shrink-0">
-                  <svg
-                    className="h-5 w-5 text-red-400"
-                    fill="currentColor"
-                    viewBox="0 0 20 20"
-                  >
-                    <path
-                      fillRule="evenodd"
-                      d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z"
-                      clipRule="evenodd"
-                    />
-                  </svg>
-                </div>
-                <div className="ml-3">
-                  <p className="text-sm text-red-700">{error}</p>
-                </div>
-              </div>
-            </div>
-            <Link
-              href={`/communities/${slug}`}
-              className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
-            >
-              Back to Community
-            </Link>
           </div>
         </div>
       </DashboardLayout>
@@ -350,22 +306,18 @@ export default function PostDetailPage() {
                 dangerouslySetInnerHTML={{ __html: post.content }}
                 style={{
                   color: '#111827',
-                  '--tw-prose-body': '#111827',
-                  '--tw-prose-headings': '#111827', 
-                  '--tw-prose-lead': '#111827',
-                  '--tw-prose-links': '#2563eb'
                 }}
               />
 
               {/* Post image if available */}
               {post.image && (
-                <div className="mb-6">
-                  <img
+                <div className="mb-6 relative w-full h-96">
+                  <Image
                     src={getMediaUrl(post.image)}
                     alt={post.title}
-                    className="rounded-lg max-h-96 object-contain"
+                    fill
+                    style={{ objectFit: "contain" }}
                     onError={(e) => {
-                      e.currentTarget.onerror = null;
                       e.currentTarget.style.display = "none";
                     }}
                   />
@@ -495,8 +447,11 @@ export default function PostDetailPage() {
               </h2>
 
               {/* Comment form */}
-              <div className="mb-8">
-                <CommentForm onSubmit={handleAddComment} isLoading={commentLoading} />
+              <div className="mt-6">
+                <CommentForm 
+                  onSubmit={handleCommentSubmit} 
+                  isLoading={false}
+                />
               </div>
 
               {/* Comments list */}

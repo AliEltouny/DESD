@@ -1,15 +1,14 @@
 "use client";
 
 import React, { useState, useEffect, useRef } from "react";
-import { useParams, useRouter } from "next/navigation";
+import { useParams } from "next/navigation";
 import AuthLayout from "@/components/layouts/AuthLayout";
-import Input from "@/components/ui/Input";
 import Button from "@/components/ui/Button";
 import { useAuth } from "@/contexts/AuthContext";
 import Link from "next/link";
 
 const VerifyOtpPage = () => {
-  const router = useRouter();
+  // const router = useRouter(); // Unused
   const params = useParams();
   const email = params.email as string;
 
@@ -118,7 +117,7 @@ const VerifyOtpPage = () => {
 
       // Show success message
       // This would be replaced with actual API call in production
-    } catch (err) {
+    } catch /* (err) */ { // Removed unused err variable
       setError("Failed to resend OTP. Please try again.");
     } finally {
       setIsResending(false);
@@ -139,9 +138,13 @@ const VerifyOtpPage = () => {
     try {
       await verifyOtp(email, otp);
       // Redirect happens in verifyOtp function
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error("OTP verification error:", err);
-      setError(err.response?.data?.message || "Invalid OTP. Please try again.");
+      let message = "Invalid OTP. Please try again.";
+      if (err && typeof err === 'object' && 'response' in err && err.response && typeof err.response === 'object' && 'data' in err.response && err.response.data && typeof err.response.data === 'object' && 'message' in err.response.data) {
+        message = (err.response.data as { message: string }).message || message;
+      }
+      setError(message);
     } finally {
       setIsLoading(false);
     }
@@ -150,7 +153,7 @@ const VerifyOtpPage = () => {
   return (
     <AuthLayout
       title="Email Verification"
-      subtitle={`We've sent a verification code to ${email}`}
+      subtitle={`We&apos;ve sent a verification code to ${email}`}
     >
       <div className="flex flex-col md:flex-row gap-8">
         <div className="w-full md:w-3/5">
@@ -252,7 +255,7 @@ const VerifyOtpPage = () => {
 
             <div className="bg-blue-50 p-4 rounded-md border border-blue-100">
               <h3 className="font-medium text-blue-800 text-sm mb-2">
-                Can't find the code?
+                Can&apos;t find the code? {/* Escaped apostrophe */}
               </h3>
               <ul className="space-y-1 text-sm text-gray-700">
                 <li className="flex items-start">
@@ -317,12 +320,33 @@ const VerifyOtpPage = () => {
 
             <div className="text-center">
               <p className="text-sm text-gray-600">
+                Wrong email?{" "}
                 <Link
                   href="/register"
                   className="font-medium text-blue-600 hover:text-blue-500 transition-colors duration-300"
                 >
-                  ← Back to registration
+                  Go back
                 </Link>
+                {" "}or try signing up again.
+              </p>
+              <p className="text-sm text-gray-600 mt-2">
+                Didn&apos;t receive the code?{" "}
+                <button
+                  type="button"
+                  onClick={handleResendOtp}
+                  disabled={!canResend || isResending}
+                  className={`font-medium ${
+                    canResend
+                      ? "text-blue-600 hover:text-blue-800"
+                      : "text-gray-400"
+                  } transition-colors duration-300`}
+                >
+                  Resend code
+                </button>
+                {" "}after {formatTime(countdown)}
+              </p>
+              <p className="text-xs text-gray-400 mt-4">
+                If you&apos;re still having issues, please contact support. {/* Escaped apostrophe */}
               </p>
             </div>
           </form>
@@ -348,22 +372,66 @@ const VerifyOtpPage = () => {
               </svg>
             </div>
             <h3 className="text-xl font-bold text-gray-800 mb-2">
-              Check Your Email
+              Verify Your Email
             </h3>
             <p className="text-gray-600 text-center max-w-xs">
-              We've sent a 6-digit verification code to your email address to
-              verify your account.
+              Enter the code we sent to your email to complete your registration.
             </p>
 
-            <div className="mt-8 bg-gray-100 p-4 rounded-lg border border-gray-200">
-              <p className="text-sm text-gray-700">
-                <span className="block font-medium mb-2">
-                  What happens next?
-                </span>
-                After verification, you'll be able to access all features of Uni
-                Hub, including joining communities, discovering events, and
-                connecting with fellow students.
-              </p>
+            <div className="mt-8 bg-blue-50 p-4 rounded-lg border border-blue-100">
+              <h4 className="font-medium text-blue-800 mb-2">
+                Didn&apos;t get the code? {/* Escaped apostrophe */}
+              </h4>
+              <ul className="space-y-2">
+                <li className="flex items-start text-sm text-gray-700">
+                  <svg
+                    className="w-4 h-4 text-blue-500 mr-2 flex-shrink-0"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M5 13l4 4L19 7"
+                    />
+                  </svg>
+                  The email might be in your spam folder.
+                </li>
+                <li className="flex items-start text-sm text-gray-700">
+                  <svg
+                    className="w-4 h-4 text-blue-500 mr-2 flex-shrink-0 mt-0.5"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M5 13l4 4L19 7"
+                    />
+                  </svg>
+                  Ensure you entered the correct email address during sign-up.
+                </li>
+                <li className="flex items-start text-sm text-gray-700">
+                  <svg
+                    className="w-4 h-4 text-blue-500 mr-2 flex-shrink-0 mt-0.5"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M5 13l4 4L19 7"
+                    />
+                  </svg>
+                  If it doesn&apos;t arrive after 5 minutes, click &apos;Resend code&apos;.
+                </li>
+              </ul>
             </div>
           </div>
         </div>

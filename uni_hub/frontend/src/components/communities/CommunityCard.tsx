@@ -2,6 +2,7 @@
 
 import React from "react";
 import Link from "next/link";
+import Image from "next/image";
 import { Community } from "@/types/community";
 import { getMediaUrl } from "@/services/api";
 
@@ -69,22 +70,22 @@ const CommunityCard: React.FC<CommunityCardProps> = ({
       {/* Community banner */}
       <div className="relative h-32 w-full bg-blue-50">
         {community.banner ? (
-          <img
+          <Image
             src={getMediaUrl(community.banner)}
             alt={`${community.name || "Community"} banner`}
+            fill
+            style={{ objectFit: "cover" }}
             onError={(e) => {
-              e.currentTarget.onerror = null;
-              e.currentTarget.style.display = "none";
-              // Show gradient background as fallback
-              if (e.currentTarget.parentElement) {
-                e.currentTarget.parentElement.classList.add(
+              (e.target as HTMLImageElement).style.display = 'none';
+              const parentElement = (e.target as HTMLImageElement).parentElement;
+              if (parentElement) {
+                parentElement.classList.add(
                   "bg-gradient-to-r",
                   "from-blue-100",
                   "to-blue-50"
                 );
               }
             }}
-            className="h-full w-full object-cover"
           />
         ) : (
           <div className="h-full w-full bg-gradient-to-r from-blue-100 to-blue-50"></div>
@@ -95,21 +96,15 @@ const CommunityCard: React.FC<CommunityCardProps> = ({
       <div className="relative -mt-10 ml-5">
         {community.image ? (
           <div className="relative h-20 w-20 rounded-xl overflow-hidden border-4 border-white shadow-sm">
-            <img
+            <Image
               src={getMediaUrl(community.image)}
               alt={community.name || "Community"}
+              fill
+              style={{ objectFit: "cover" }}
+              className="rounded-xl"
               onError={(e) => {
-                e.currentTarget.onerror = null;
-                // Replace with initials
-                if (e.currentTarget.parentElement) {
-                  e.currentTarget.parentElement.innerHTML = `
-                    <div class="flex items-center justify-center h-full w-full bg-blue-500 text-white font-bold text-2xl">
-                      ${getInitials()}
-                    </div>
-                  `;
-                }
+                (e.target as HTMLImageElement).style.display = 'none';
               }}
-              className="h-full w-full object-cover"
             />
           </div>
         ) : (
@@ -201,7 +196,7 @@ const CommunityCard: React.FC<CommunityCardProps> = ({
         </div>
 
         {/* Status indicator for members */}
-        {community.is_member && (
+        {(community.is_member ?? false) && (
           <div className="mt-4 pt-3 border-t border-gray-100">
             <span
               className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium 

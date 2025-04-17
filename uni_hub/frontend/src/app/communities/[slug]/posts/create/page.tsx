@@ -4,11 +4,11 @@ import React, { useState, useEffect } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { useAuth } from "@/contexts/AuthContext";
 import Link from "next/link";
-import { getCommunity, Community } from "@/services/communityService";
+import { getCommunity } from "@/services/communityService";
+import { Community } from "@/types/community";
 import DashboardLayout from "@/components/layouts/DashboardLayout";
 import Button from "@/components/ui/Button";
 import Input from "@/components/ui/Input";
-import Select from "@/components/ui/Select";
 import CustomSelect from "@/components/ui/CustomSelect";
 import FileUpload from "@/components/ui/FileUpload";
 import RichTextEditor from "@/components/ui/RichTextEditor";
@@ -94,7 +94,7 @@ export default function CreatePostPage() {
         setCommunity(communityData);
 
         // Check if user is a member of the community or the creator
-        const isMember = communityData.is_member || communityData.creator?.id === user?.id;
+        const isMember = (communityData.is_member ?? false) || communityData.creator?.id === user?.id;
         
         if (!isMember) {
           setError(
@@ -229,7 +229,7 @@ export default function CreatePostPage() {
           console.error("Validation errors:", validationErrors);
           
           // Format error messages
-          const newFormErrors: any = {};
+          const newFormErrors: { title?: string; content?: string; postType?: string } = {};
           
           if (validationErrors.title) {
             newFormErrors.title = Array.isArray(validationErrors.title) 

@@ -1,7 +1,6 @@
 "use client";
 
 import axios from "axios";
-import { processApiResponse, handleApiError } from "./errorHandling";
 
 // For requests made from the browser, we need to use localhost
 // For SSR and within Docker, we use the environment variable
@@ -49,19 +48,20 @@ api.interceptors.request.use(
     config.withCredentials = true;
     
     // Log request details for debugging
-    console.log("API Request:", {
-      url: config.url,
-      method: config.method,
-      baseURL: config.baseURL,
-      headers: {
-        ...config.headers,
-        Authorization: config.headers.Authorization ? 
-          `${config.headers.Authorization.substring(0, 15)}...` : 
-          "Not set"
-      },
-      withCredentials: config.withCredentials,
-      data: config.data,
-    });
+    let authHeaderDisplay = "Bearer ???";
+    if (config.headers?.Authorization) {
+      const authHeader = config.headers.Authorization;
+      // Check if it's a string before using substring
+      if (typeof authHeader === 'string') {
+         authHeaderDisplay = `${authHeader.substring(0, 15)}...`;
+      }
+    }
+
+    console.log(
+      `--> ${config.method?.toUpperCase()} ${config.url}`,
+      `Authorization: ${authHeaderDisplay}`,
+      config.data ? { data: config.data } : ""
+    );
     
     return config;
   },
@@ -107,12 +107,9 @@ api.interceptors.response.use(
           throw new Error("No refresh token");
         }
 
-        const response = await axios.post(`${API_URL}/token/refresh/`, {
+        await axios.post(`${API_URL}/token/refresh/`, {
           refresh: refreshToken,
         });
-
-        const { access } = response.data;
-        // Don't set in localStorage, let AuthContext handle cookies
 
         // Let the request proceed without manually setting header
         return api(originalRequest);
@@ -146,29 +143,47 @@ export const getMediaUrl = (path: string | null): string => {
 
   const isBrowser = typeof window !== 'undefined';
   let result: string;
-  
-  // For absolute URLs, make sure they're accessible from browser
-  if (path.startsWith("http")) {
-    // Replace Docker container hostname with localhost
-    if (isBrowser && path.includes("backend:8000")) {
-      result = path.replace("backend:8000", "localhost:8000");
+
+  // ALWAYS return relative path for browser use (to leverage rewrites)
+  if (isBrowser) {
+    if (path.startsWith("http")) {
+      try {
+        // Attempt to parse the absolute URL and extract the pathname
+        const url = new URL(path);
+        // Ensure it's actually a media path before returning relative
+        if (url.pathname.startsWith('/media/')) {
+          result = url.pathname; // e.g., /media/communities/images/foo.jpg
+        } else {
+          result = path; // If not a media path, return original absolute URL
+        }
+      } catch (e) {
+        // If URL parsing fails, return the original path
+        console.warn("Could not parse URL in getMediaUrl:", path, e);
+        result = path;
+      }
     } else {
-      result = path;
+      // Handle relative paths (ensure it starts with /media/)
+      const cleanPath = path.replace(/^\/+/, "");
+      result = cleanPath.startsWith('media/') ? `/${cleanPath}` : `/media/${cleanPath}`;
     }
   } else {
-    // For relative paths, clean them and create absolute URLs
-    let cleanPath = path.replace(/^\/+/, "").replace(/^media\//, "");
-    
-    // In the browser, use relative URLs that will be handled by the Next.js proxy
-    if (isBrowser) {
-      result = `/media/${cleanPath}`;
-    } else {
-      // For server-side rendering, use the full URL
-      const MEDIA_BASE_URL = process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:8000";
-      result = `${MEDIA_BASE_URL}/media/${cleanPath}`;
-    }
+    // Server-side rendering: construct the correct absolute URL
+     if (path.startsWith("http")) {
+        // If it includes localhost, replace with backend service name for SSR context
+        if (path.includes("localhost:8000")) {
+           result = path.replace("localhost:8000", "backend:8000");
+        } else {
+           result = path; // Assume other absolute URLs are correct for SSR context
+        }
+     } else {
+        const cleanPath = path.replace(/^\/+/, "").replace(/^media\//, "");
+        // Use internal backend URL for SSR fetch
+        // Ensure NEXT_PUBLIC_BACKEND_URL is correctly set in the environment if needed
+        const MEDIA_BASE_URL = process.env.NEXT_PUBLIC_BACKEND_URL || "http://backend:8000"; 
+        result = `${MEDIA_BASE_URL}/media/${cleanPath}`;
+     }
   }
-  
+
   // Cache the result for future use
   urlCache.set(path, result);
   return result;
