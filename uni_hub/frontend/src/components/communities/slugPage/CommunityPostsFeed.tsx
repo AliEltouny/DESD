@@ -44,8 +44,8 @@ const CommunityPostsFeed: React.FC<CommunityPostsFeedProps> = ({
 
   return (
     <div className="space-y-6">
-      {/* Create Post Card */}
-      {isCreator || (community.is_member && community.membership_status === "approved") ? (
+      {/* START: Remove the quick Create Post Card */}
+      {/* {isCreator || (community.is_member && community.membership_status === "approved") ? (
         <div className="bg-white rounded-lg shadow-sm p-4">
           <Link
             href={`/communities/${slug}/posts/create`}
@@ -66,7 +66,8 @@ const CommunityPostsFeed: React.FC<CommunityPostsFeedProps> = ({
             </div>
           </Link>
         </div>
-      ) : null}
+      ) : null} */}
+      {/* END: Remove the quick Create Post Card */}
 
       {/* Posts Section */}
       <div className="bg-white rounded-lg shadow-sm overflow-hidden">

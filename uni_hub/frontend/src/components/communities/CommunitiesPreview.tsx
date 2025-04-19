@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
 import Link from "next/link";
 import Image from "next/image";
-import { getCommunities } from "@/services/communityService";
+import { communityApi } from "@/services/api";
 import { Community } from "@/types/community";
 import Card from "@/components/ui/Card";
 import { getMediaUrl } from "@/services/api";
@@ -26,7 +26,7 @@ const CommunitiesPreview: React.FC<CommunitiesPreviewProps> = ({
         // If userId is provided, get only communities the user is a member of
         // Otherwise get all communities
         const params = userId ? { member_of: true } : { limit: 3 };
-        const data = await getCommunities(params);
+        const data = await communityApi.getCommunities(params);
 
         // Ensure we got an array back
         if (!Array.isArray(data)) {

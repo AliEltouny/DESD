@@ -4,7 +4,7 @@ import React, { useState, useEffect } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { useAuth } from "@/contexts/AuthContext";
 import Link from "next/link";
-import { getCommunity } from "@/services/communityService";
+import { communityApi } from "@/services/api";
 import { Community } from "@/types/community";
 import DashboardLayout from "@/components/layouts/DashboardLayout";
 import Button from "@/components/ui/Button";
@@ -90,7 +90,7 @@ export default function CreatePostPage() {
         }
 
         // Fetch community details
-        const communityData = await getCommunity(slug as string);
+        const communityData = await communityApi.getCommunity(slug as string);
         setCommunity(communityData);
 
         // Check if user is a member of the community or the creator

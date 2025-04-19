@@ -2,9 +2,10 @@
 
 import { useState } from "react";
 import { useAuth } from "@/contexts/AuthContext";
-import CommunityList from "@/components/communities/CommunityList";
 import Link from "next/link";
 import DashboardLayout from "@/components/layouts/DashboardLayout";
+import YourCommunitiesSection from "@/components/communities/listPage/YourCommunitiesSection";
+import DiscoverCommunitiesSection from "@/components/communities/listPage/DiscoverCommunitiesSection";
 
 export default function CommunitiesPage() {
   const { isAuthenticated } = useAuth();
@@ -47,57 +48,14 @@ export default function CommunitiesPage() {
         </div>
 
         {isAuthenticated && (
-          <div className="mb-8">
-            <div className="bg-white rounded-lg shadow-sm overflow-hidden">
-              <div className="p-6">
-                <div className="flex items-center justify-between">
-                  <h2 className="text-xl font-semibold text-gray-900">
-                    Your Communities
-                  </h2>
-                  <Link
-                    href="/communities?member_only=true"
-                    className="text-sm text-blue-600 hover:text-blue-800"
-                  >
-                    View All
-                  </Link>
-                </div>
-                <CommunityList
-                  memberOnly={true}
-                  maxItems={3}
-                  title=""
-                  showFilters={false}
-                  className="mt-4"
-                />
-              </div>
-            </div>
-          </div>
+          <YourCommunitiesSection />
         )}
 
-        <div className="mb-8">
-          <CommunityList
-            title="Discover Communities"
-            showFilters={true}
-            memberOnly={memberOnly}
-          />
-        </div>
-
-        {isAuthenticated && (
-          <div className="mt-4 flex items-center">
-            <input
-              type="checkbox"
-              id="member-only-filter"
-              checked={memberOnly}
-              onChange={() => setMemberOnly(!memberOnly)}
-              className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
-            />
-            <label
-              htmlFor="member-only-filter"
-              className="ml-2 block text-sm text-gray-900"
-            >
-              Show only communities I&apos;m a member of
-            </label>
-          </div>
-        )}
+        <DiscoverCommunitiesSection 
+          memberOnly={memberOnly} 
+          isAuthenticated={isAuthenticated}
+          onFilterChange={setMemberOnly}
+        />
       </div>
     </DashboardLayout>
   );

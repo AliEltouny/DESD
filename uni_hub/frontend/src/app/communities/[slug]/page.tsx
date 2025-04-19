@@ -1,371 +1,497 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import Link from "next/link";
-import { useParams, useRouter } from "next/navigation";
-import { useAuth } from "@/contexts/AuthContext";
+import React, { useState, useEffect, Suspense } from 'react';
+import { useParams, useRouter } from 'next/navigation';
+// import { Community, Post } from '@/types/community'; // Types likely come from useCommunity/useCommunityPosts now
+import { Post } from '@/types/api'; // Keep Post type if needed for handlePostCreated
+import { useAuth } from '@/contexts/AuthContext';
+import { useUser } from '@/contexts/UserContext';
+// import { communityApi, postApi } from '@/services/api'; // No longer needed directly for fetching
 import {
-  getCommunity,
-  joinCommunity,
-  leaveCommunity,
-  getPosts,
-  upvotePost,
-  Post,
-} from "@/services/communityService";
-import { Community } from "@/types/community";
-import DashboardLayout from "@/components/layouts/DashboardLayout";
+  useCommunity, 
+  useCommunityPosts, 
+  useMembershipStatus, // Import new hook
+  useJoinCommunity,    // Import new hook
+  useLeaveCommunity    // Import new hook
+} from '@/hooks/communities'; 
+
+import DashboardLayout from '@/components/layouts/DashboardLayout'; // Import DashboardLayout
 import CommunityHeader from '@/components/communities/slugPage/CommunityHeader';
-import CommunityNav from '@/components/communities/slugPage/CommunityNav';
 import CommunityPostsFeed from '@/components/communities/slugPage/CommunityPostsFeed';
+import CreatePostForm from '@/components/communities/CreatePostForm';
 import CommunitySidebar from '@/components/communities/slugPage/CommunitySidebar';
+import LoadingSpinner from '@/components/ui/LoadingSpinner';
+import CommunityTabs from '@/components/communities/CommunityTabs';
 
-export default function CommunityDetailPage(): React.ReactElement {
-  const { slug } = useParams();
-  const router = useRouter();
-  const { user, isAuthenticated } = useAuth();
+// Tab components
+const AboutTab = ({ community, isCreator }) => (
+  <div className="bg-white rounded-lg shadow-lg p-6">
+    <h2 className="text-2xl font-bold mb-4 text-gray-900">About {community.name}</h2>
+    
+    {community.description && (
+      <div className="mb-6">
+        <h3 className="text-lg font-semibold mb-2 text-gray-800">Description</h3>
+        <p className="text-gray-700 whitespace-pre-line leading-relaxed">{community.description}</p>
+      </div>
+    )}
+    
+    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+      <div className="bg-gray-50 p-4 rounded-lg">
+        <h3 className="text-lg font-semibold mb-2 text-gray-800">Community Details</h3>
+        <ul className="space-y-3">
+          <li className="flex items-center text-gray-700">
+            <span className="flex-shrink-0 bg-blue-100 text-blue-600 p-1 rounded mr-3">👥</span>
+            <span><strong>{community.member_count || 0}</strong> members</span>
+          </li>
+          {community.category && (
+            <li className="flex items-center text-gray-700">
+              <span className="flex-shrink-0 bg-purple-100 text-purple-600 p-1 rounded mr-3">🏷️</span>
+              <span>Category: <strong className="capitalize">{community.category}</strong></span>
+            </li>
+          )}
+          <li className="flex items-center text-gray-700">
+            <span className="flex-shrink-0 bg-green-100 text-green-600 p-1 rounded mr-3">📅</span>
+            <span>Created: <strong>{new Date(community.created_at).toLocaleDateString()}</strong></span>
+          </li>
+          {community.creator && (
+            <li className="flex items-center text-gray-700">
+              <span className="flex-shrink-0 bg-yellow-100 text-yellow-600 p-1 rounded mr-3">👤</span>
+              <span>Created by: <strong>{community.creator.username || community.creator.email}</strong></span>
+            </li>
+          )}
+          <li className="flex items-center text-gray-700">
+            <span className="flex-shrink-0 bg-gray-100 text-gray-600 p-1 rounded mr-3">{community.is_private ? '🔒' : '🌐'}</span>
+            <span><strong>{community.is_private ? 'Private' : 'Public'}</strong> community</span>
+          </li>
+        </ul>
+      </div>
+      
+      {community.rules && (
+        <div className="bg-gray-50 p-4 rounded-lg">
+          <h3 className="text-lg font-semibold mb-2 text-gray-800">Community Rules</h3>
+          <div className="text-gray-700 whitespace-pre-line leading-relaxed">{community.rules}</div>
+        </div>
+      )}
+    </div>
+    
+    {isCreator && (
+      <div className="mt-6 p-4 bg-blue-50 rounded-lg border border-blue-200">
+        <h3 className="text-lg font-semibold text-blue-800 mb-2">Admin Options</h3>
+        <p className="text-gray-700 mb-3">As the creator of this community, you have access to additional management options.</p>
+        <button className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors">
+          Manage Community
+        </button>
+      </div>
+    )}
+  </div>
+);
 
-  const [community, setCommunity] = useState<Community | null>(null);
-  const [posts, setPosts] = useState<Post[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const [joinLoading, setJoinLoading] = useState(false);
-  const [postType, setPostType] = useState("");
-  const [searchQuery, setSearchQuery] = useState("");
+const MembersTab = ({ community }) => (
+  <div className="bg-white rounded-lg shadow-lg p-6">
+    <h2 className="text-2xl font-bold mb-4 text-gray-900">Members</h2>
+    <p className="text-gray-500 italic">Members list functionality will be implemented soon.</p>
+    <div className="mt-4 bg-gray-50 p-4 rounded-lg">
+      <div className="flex items-center gap-2">
+        <span className="text-blue-600 font-semibold">👥</span>
+        <span className="font-medium">{community.member_count || 0} total members</span>
+      </div>
+    </div>
+  </div>
+);
 
-  useEffect(() => {
-    const fetchCommunityData = async () => {
-      try {
-        setLoading(true);
-        setError(null);
+// Quick Links Component with actual functionality
+const QuickLinks = ({ community, activeTab, onTabChange }) => (
+  <div className="bg-white rounded-lg shadow-lg overflow-hidden">
+    <div className="bg-gradient-to-r from-purple-600 to-pink-600 px-4 py-3">
+      <h2 className="text-lg font-semibold text-white">Quick Links</h2>
+    </div>
+    <div className="p-4">
+      <nav className="space-y-2">
+        {/* Latest Posts - switches to Posts tab */}
+        <button 
+          onClick={() => onTabChange('posts')}
+          className={`block w-full text-left px-3 py-2 rounded-md hover:bg-gray-100 text-gray-700 font-medium transition-colors flex items-center ${activeTab === 'posts' ? 'bg-blue-50 text-blue-700' : ''}`}
+        >
+          <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2 text-purple-500" viewBox="0 0 20 20" fill="currentColor">
+            <path d="M5 3a2 2 0 00-2 2v2a2 2 0 002 2h2a2 2 0 002-2V5a2 2 0 00-2-2H5zM5 11a2 2 0 00-2 2v2a2 2 0 002 2h2a2 2 0 002-2v-2a2 2 0 00-2-2H5zM11 5a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V5zM14 11a1 1 0 011 1v1h1a1 1 0 110 2h-1v1a1 1 0 11-2 0v-1h-1a1 1 0 110-2h1v-1a1 1 0 011-1z" />
+          </svg>
+          Latest Posts
+        </button>
 
-        // Add a delay to allow auth to be restored on hard refresh
-        if (!isAuthenticated) {
-          console.log("Auth not ready, waiting for potential restoration...");
-          // Wait a short time before continuing
-          await new Promise(resolve => setTimeout(resolve, 1000));
-        }
+        {/* Community Guidelines - switches to About tab */}
+        <button 
+          onClick={() => onTabChange('about')}
+          className={`block w-full text-left px-3 py-2 rounded-md hover:bg-gray-100 text-gray-700 font-medium transition-colors flex items-center ${activeTab === 'about' ? 'bg-blue-50 text-blue-700' : ''}`}
+        >
+          <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2 text-blue-500" viewBox="0 0 20 20" fill="currentColor">
+            <path fillRule="evenodd" d="M4 4a2 2 0 012-2h4.586A2 2 0 0112 2.586L15.414 6A2 2 0 0116 7.414V16a2 2 0 01-2 2H6a2 2 0 01-2-2V4z" clipRule="evenodd" />
+          </svg>
+          Community Guidelines
+        </button>
 
-        // Check if user is the community creator from localStorage if auth is still loading
-        let isCreator = false;
-        let localUserData: { id: number; username: string } | null = null;
-        
-        // Try to get user data from localStorage if not authenticated yet
-        if (!user) {
-          try {
-            const storedUserData = localStorage.getItem('user');
-            if (storedUserData) {
-              localUserData = JSON.parse(storedUserData);
-              console.log("Using stored user data:", localUserData?.username);
-            }
-          } catch (err) {
-            console.error("Error loading stored user data:", err);
-          }
-        }
-        
-        // Determine the user ID to use for creator check (prefer authenticated user)
-        const userIdToCheck = user?.id ?? localUserData?.id;
-        
-        // Try to get stored community data
-        if (userIdToCheck && slug) {
-          try {
-            const storedCommunityKey = `community_${slug}`;
-            const storedCommunityData = localStorage.getItem(storedCommunityKey);
+        {/* Members List - switches to Members tab */}
+        <button 
+          onClick={() => onTabChange('members')}
+          className={`block w-full text-left px-3 py-2 rounded-md hover:bg-gray-100 text-gray-700 font-medium transition-colors flex items-center ${activeTab === 'members' ? 'bg-blue-50 text-blue-700' : ''}`}
+        >
+          <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2 text-green-500" viewBox="0 0 20 20" fill="currentColor">
+            <path d="M13 6a3 3 0 11-6 0 3 3 0 016 0zM18 8a2 2 0 11-4 0 2 2 0 014 0zM14 15a4 4 0 00-8 0v3h8v-3zM6 8a2 2 0 11-4 0 2 2 0 014 0zM16 18v-3a5.972 5.972 0 00-.75-2.906A3.005 3.005 0 0119 15v3h-3zM4.75 12.094A5.973 5.973 0 004 15v3H1v-3a3 3 0 013.75-2.906z" />
+          </svg>
+          Members
+        </button>
+
+        {/* Share Community */}
+        <button
+          onClick={() => {
+            // Create a shareable URL for the community
+            const communityUrl = window.location.href;
             
-            if (storedCommunityData) {
-              const communityData = JSON.parse(storedCommunityData);
-              if (communityData.creator?.id === userIdToCheck) {
-                isCreator = true;
-                console.log("User identified as creator from stored data");
-              }
-            }
-          } catch (err) {
-            console.error("Error checking stored creator status:", err);
-          }
-        }
-
-        // Fetch community details
-        console.log("Fetching community data for:", slug);
-        try {
-          const communityData = await getCommunity(slug as string);
-          console.log("Community data received:", communityData);
-          
-          // Update creator status with actual data from API
-          isCreator = (userIdToCheck === communityData.creator?.id) || isCreator;
-
-          // Ensure image properties are properly set
-          // If cover_image is missing but banner exists, use banner
-          if (!communityData.cover_image && communityData.banner) {
-            communityData.cover_image = communityData.banner;
-          }
-          // If logo is missing but image exists, use image
-          if (!communityData.logo && communityData.image) {
-            communityData.logo = communityData.image;
-          }
-
-          // Ensure required membership properties exist
-          communityData.is_member = communityData.is_member || false;
-          communityData.is_moderator = communityData.is_moderator || 
-            (communityData.membership_role === 'moderator');
-          communityData.is_admin = communityData.is_admin || 
-            (communityData.membership_role === 'admin');
-          
-          // Store community data in localStorage for quicker access on hard refresh
-          try {
-            localStorage.setItem(`community_${slug}`, JSON.stringify(communityData));
-          } catch (err) {
-            console.error("Error storing community data:", err);
-          }
-          
-          // Always ensure creator is recognized as admin member
-          if (isCreator || (communityData.creator?.id === userIdToCheck)) {
-            console.log("Creator detected - ensuring admin status");
-            communityData.is_member = true;
-            communityData.membership_status = "approved";
-            communityData.membership_role = "admin";
-            communityData.is_admin = true;
-          }
-          
-          setCommunity(communityData);
-
-          // Fetch community posts
-          const params: { type?: string; search?: string } = {};
-          if (postType) {
-            params.type = postType;
-          }
-          if (searchQuery) {
-            params.search = searchQuery;
-          }
-
-          try {
-            const postsData = await getPosts(slug as string, params);
-            console.log("Posts data received:", postsData ? postsData.length : "undefined", "posts");
-            // Ensure posts is always an array, even if API returns null, undefined or an object
-            if (Array.isArray(postsData)) {
-              setPosts(postsData);
+            // Try to use the Web Share API if available
+            if (navigator.share) {
+              navigator.share({
+                title: `Join ${community.name} on UniHub`,
+                text: community.short_description || `Check out the ${community.name} community on UniHub!`,
+                url: communityUrl,
+              }).catch(err => {
+                console.error('Error sharing:', err);
+                // Fallback to clipboard
+                navigator.clipboard.writeText(communityUrl);
+                alert('Link copied to clipboard!');
+              });
             } else {
-              console.warn("API didn&apos;t return an array for posts:", postsData);
-              setPosts([]);
+              // Fallback for browsers that don't support Web Share API
+              navigator.clipboard.writeText(communityUrl);
+              alert('Link copied to clipboard!');
             }
-          } catch (postsErr) {
-            // Type error as unknown
-            console.error("Failed to fetch posts:", postsErr);
-            setPosts([]); // Set empty array if posts request fails
-          }
-        } catch (communityErr: unknown) {
-          console.error("Failed to fetch community:", communityErr);
-          
-          let message = "Failed to load community. Please try again later.";
-          if (communityErr instanceof Error) {
-            if (communityErr.message?.includes("not found")) {
-              message = `Community \"${slug}\" not found. It may have been deleted or never existed.`;
-            } else if (communityErr.message?.includes("permission")) {
-              message = "You don&apos;t have permission to access this community.";
-            }
-          }
-          setError(message);
-          
-          // Clear any locally stored data for this community since it's invalid
-          try {
-            localStorage.removeItem(`community_${slug}`);
-          } catch (err) {
-            console.error("Error removing invalid community data from storage:", err);
-          }
-        }
-      } catch (err: unknown) {
-        console.error("Failed to fetch community data:", err);
-        setError("Failed to load community. Please try again later.");
-      }
-      setLoading(false);
-    };
+          }}
+          className="block w-full text-left px-3 py-2 rounded-md hover:bg-gray-100 text-gray-700 font-medium transition-colors flex items-center"
+        >
+          <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2 text-pink-500" viewBox="0 0 20 20" fill="currentColor">
+            <path d="M15 8a3 3 0 10-2.977-2.63l-4.94 2.47a3 3 0 100 4.319l4.94 2.47a3 3 0 10.895-1.789l-4.94-2.47a3.027 3.027 0 000-.74l4.94-2.47C13.456 7.68 14.19 8 15 8z" />
+          </svg>
+          Share Community
+        </button>
+        
+        {/* Report Community */}
+        <button
+          onClick={() => alert('Report functionality will be implemented soon.')}
+          className="block w-full text-left px-3 py-2 rounded-md hover:bg-gray-100 text-gray-700 font-medium transition-colors flex items-center"
+        >
+          <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2 text-red-500" viewBox="0 0 20 20" fill="currentColor">
+            <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+          </svg>
+          Report Community
+        </button>
+      </nav>
+    </div>
+    
+    {/* Footer with copyright info */}
+    <div className="text-xs text-gray-500 px-4 py-3 border-t border-gray-100">
+      <p>© {new Date().getFullYear()} Uni Hub</p>
+      <p className="mt-1">Building university communities together</p>
+    </div>
+  </div>
+);
 
-    if (slug) {
-      fetchCommunityData();
+// Define component logic within a client component
+function CommunityDetailContent() {
+  const { slug: rawSlug } = useParams();
+  const slug = typeof rawSlug === 'string' ? rawSlug : undefined;
+  console.log('[CommunityDetailContent] Slug extracted from params:', slug);
+  const router = useRouter();
+  const { isAuthenticated, isLoading: isLoadingAuth } = useAuth();
+  const { user, isLoadingProfile } = useUser();
+
+  // Initialize activeTab state with 'posts' as default
+  const [activeTab, setActiveTab] = useState('posts');
+
+  // Use the custom hooks for data fetching
+  const { 
+    community: fetchedCommunity, // Rename to avoid conflict with local state if needed later
+    loading: loadingCommunity, 
+    error: communityError 
+  } = useCommunity(slug as string);
+  
+  const { 
+    posts: communityPosts,
+    loading: loadingPosts, 
+    error: postsError 
+  } = useCommunityPosts(slug as string);
+
+  const { 
+    membershipStatus, 
+    isLoading: isLoadingMembership, 
+    error: membershipError 
+  } = useMembershipStatus(slug); // Fetch membership status
+
+  // --- Action Hooks ---
+  const { joinCommunity, isJoining, error: joinError } = useJoinCommunity();
+  const { leaveCommunity, isLeaving, error: leaveError } = useLeaveCommunity();
+
+  // --- Local State ---
+  // Local state for newly created posts and membership (if implemented later)
+  const [localPosts, setLocalPosts] = useState<Post[]>([]); // For optimistic updates
+  const [isMember, setIsMember] = useState<boolean | null>(null);
+  const [derivedStatus, setDerivedStatus] = useState<string | null>(null);
+  const [actionError, setActionError] = useState<string | null>(null); // For displaying join/leave errors
+
+  // Combine posts from hook and local state for display
+  const displayPosts = [...localPosts, ...communityPosts];
+
+  // Combine loading states
+  const initialPageLoading = isLoadingAuth || isLoadingProfile || loadingCommunity || (isAuthenticated && isLoadingMembership);
+
+  // Update local community state when fetched data changes
+  const [community, setCommunity] = useState(fetchedCommunity); // Local state for potential optimistic updates
+  useEffect(() => {
+    if (fetchedCommunity) {
+      setCommunity(fetchedCommunity);
     }
-  }, [slug, postType, searchQuery, user, isAuthenticated]);
+  }, [fetchedCommunity]);
 
-  const handleJoinCommunity = async () => {
-    if (!isAuthenticated) return;
-
-    try {
-      setJoinLoading(true);
-      await joinCommunity(slug as string);
-
-      // Refresh community data to update membership status
-      const updatedCommunity = await getCommunity(slug as string);
-
-      // Manually update status locally for immediate UI feedback
-      setCommunity(prev => prev ? { ...prev, is_member: true, membership_status: updatedCommunity.requires_approval ? 'pending' : 'approved' } : null);
-
-      setJoinLoading(false);
-    } catch (err) {
-      console.error("Failed to join community:", err);
-      setError("Failed to join community. Please try again later.");
-      setJoinLoading(false);
-    }
-  };
-
-  const handleLeaveCommunity = async () => {
-    if (!isAuthenticated) return;
-
-    try {
-      setJoinLoading(true);
-      await leaveCommunity(slug as string);
-
-      // Refresh community data to update membership status
-      const updatedCommunity = await getCommunity(slug as string);
-      setCommunity(updatedCommunity);
-    } catch (err) {
-      console.error("Failed to leave community:", err);
-      setError("Failed to leave community. Please try again later.");
-    } finally {
-      setJoinLoading(false);
-    }
-  };
-
-  const handleUpvotePost = async (postId: number) => {
+  // Determine membership based on the hook result
+  useEffect(() => {
     if (!isAuthenticated) {
-      router.push("/login");
+      setIsMember(false);
+      setDerivedStatus(null);
       return;
     }
+    if (isLoadingMembership) {
+      // Keep previous state while loading new status
+      return; 
+    }
+    if (membershipStatus) {
+        console.log("Membership Status Received:", membershipStatus);
+        setIsMember(membershipStatus.is_member);
+        setDerivedStatus(membershipStatus.status ?? null);
+            } else {
+       // If no status is returned (e.g., initial load or error), assume not member
+       setIsMember(false); 
+       setDerivedStatus(null);
+    }
+  }, [membershipStatus, isLoadingMembership, isAuthenticated]);
 
-    try {
-      await upvotePost(slug as string, postId);
+  // Clear action error when join/leave error changes
+  useEffect(() => {
+    setActionError(joinError || leaveError || null);
+    // Optional: Clear error after a few seconds
+    if (joinError || leaveError) {
+        const timer = setTimeout(() => setActionError(null), 5000);
+        return () => clearTimeout(timer);
+    }
+  }, [joinError, leaveError]);
 
-      // Refresh posts to update upvote status
-      const params: { type?: string; search?: string } = {};
-      if (postType) {
-        params.type = postType;
-      }
-      if (searchQuery) {
-        params.search = searchQuery;
-      }
-
-      const updatedPosts = await getPosts(slug as string, params);
-      // Ensure posts is always an array
-       if (Array.isArray(updatedPosts)) {
-          setPosts(updatedPosts);
-       } else {
-          console.warn("API didn't return an array for posts after upvote:", updatedPosts);
-          setPosts([]);
-       }
-    } catch (err) {
-      console.error("Failed to upvote post:", err);
-      // Optionally show a toast notification for error
+  // --- Action Handlers ---
+  const handleJoin = async () => {
+    if (!slug || isJoining || isLeaving) return;
+    setActionError(null);
+    const response = await joinCommunity(slug);
+    if (response) {
+      // Optimistic update
+      setIsMember(true);
+      setDerivedStatus(response.detail?.includes('pending') ? 'pending' : 'approved'); // Infer status from message
+      // TODO: Optimistically update member count if needed
+      // setCommunity(prev => prev ? { ...prev, member_count: prev.member_count + 1 } : null);
+      // TODO: Trigger refetch of membershipStatus or community data
+      console.log("Join successful:", response.detail);
+    } else {
+        console.error("Join failed"); // Error is set in actionError state via useEffect
     }
   };
 
-  const handlePostTypeChange = (value: string) => {
-    setPostType(value);
+  const handleLeave = async () => {
+    if (!slug || isJoining || isLeaving) return;
+    setActionError(null);
+    const response = await leaveCommunity(slug);
+    if (response) {
+      // Optimistic update
+      setIsMember(false);
+      setDerivedStatus(null);
+      // TODO: Optimistically update member count if needed
+      // setCommunity(prev => prev ? { ...prev, member_count: Math.max(0, prev.member_count - 1) } : null);
+      // TODO: Trigger refetch of membershipStatus or community data
+      console.log("Leave successful:", response.detail);
+    } else {
+      console.error("Leave failed"); // Error is set in actionError state via useEffect
+    }
   };
 
-  const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setSearchQuery(e.target.value);
+  // Combined handler for components expecting one prop
+  const handleToggleMembership = () => {
+      if (isMember) {
+          handleLeave();
+      } else {
+          handleJoin();
+      }
   };
 
-  // Simplified isCreator check
-  const isCreator = community?.creator?.id === user?.id;
+  const handlePostCreated = (newPost: Post) => {
+    setLocalPosts(prevPosts => [newPost, ...prevPosts]);
+  };
 
-  if (loading) {
-      return (
-        <DashboardLayout>
-          <div className="flex flex-col items-center justify-center min-h-screen">
-            <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500"></div>
-            <p className="mt-4 text-gray-600">Loading community...</p>
-          </div>
-        </DashboardLayout>
-      );
+  // Handler for create post
+  const createPost = () => {
+    alert("Create post functionality will be implemented soon!");
+    // In a real implementation, this would:
+    // 1. Open a modal or navigate to a create post page
+    // 2. Set up form state for creating a new post
+  };
+
+  if (initialPageLoading) {
+    return <LoadingSpinner fullScreen />;
   }
 
-  if (error) {
-    return (
-      <DashboardLayout>
-        <div className="flex flex-col items-center justify-center min-h-screen px-4">
-          <div className="bg-white rounded-lg shadow-sm p-6 max-w-lg w-full text-center">
-            <h2 className="text-2xl font-semibold text-gray-900 mb-4">
-              {error.includes("not found") ? "Community Not Found" : "Error"}
-            </h2>
-            <p className="text-gray-600 mb-6">{error}</p>
-            <div className="flex flex-col sm:flex-row gap-4 justify-center">
-              <Link
-                href="/communities"
-                className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors font-normal"
-                style={{ fontWeight: "normal" }}
-              >
-                Browse Communities
-              </Link>
-              <button
-                onClick={() => window.location.reload()} // Or better: retry fetchCommunityData
-                className="px-4 py-2 border border-gray-300 text-gray-700 rounded-md hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors font-normal"
-                style={{ fontWeight: "normal" }}
-              >
-                Try Again
-              </button>
-            </div>
-          </div>
-        </div>
-      </DashboardLayout>
-    );
+  // Prioritize community error
+  if (communityError && !community) {
+    return <div className="container mx-auto px-4 py-8 text-center text-red-600">{communityError}</div>;
   }
-
-  // Ensure community is loaded before rendering main content
+  
   if (!community) {
-     // This case should ideally be covered by loading/error states,
-     // but added as a safeguard. Could return a specific message or null.
-     return (
-        <DashboardLayout>
-           <div className="text-center py-10">Community data unavailable.</div>
-        </DashboardLayout>
-     );
+      return <div className="container mx-auto px-4 py-8 text-center text-gray-500">Community not found or failed to load.</div>;
   }
+
+  // Handle posts error separately - might still show community info
+  if (postsError) {
+      console.error("Error loading posts:", postsError);
+      // Optionally render an error message for the posts section only
+  }
+
+  // Determine if user is the creator (needed for some UI elements)
+  const isCreator = user?.id === community?.creator?.id;
+  // Determine effective membership for UI (creator is always effectively a member)
+  const effectiveMember = isCreator || isMember;
 
   return (
-    <DashboardLayout>
-      <div className="min-h-screen bg-gray-50">
-        {/* Render Header */}
-        <CommunityHeader
-          community={community}
-          isCreator={isCreator}
-          handleJoinCommunity={handleJoinCommunity}
-          joinLoading={joinLoading}
-        />
+    <div className="bg-gray-100 min-h-screen -mt-10 -mb-10"> {/* Negative margins to eliminate gaps */}
+      {/* Display Action Errors */}
+      {actionError && (
+         <div className="fixed top-20 right-4 z-50 p-4 bg-red-100 border border-red-400 text-red-700 rounded shadow-lg">
+           <p>Error: {actionError}</p>
+         </div>
+      )}
 
-        {/* Main Content Area */}
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-6 pb-12">
-          {/* Render Navigation */}
-          <CommunityNav slug={slug as string} isCreator={isCreator} community={community} />
+      {/* Full-width header component */}
+      <CommunityHeader
+        community={community}
+        isMember={effectiveMember ?? false}
+        membershipStatus={derivedStatus}
+        onJoinLeave={handleToggleMembership} 
+        isProcessing={isJoining || isLeaving}
+        isAuthenticated={isAuthenticated}
+        activeTab={activeTab}
+        onTabChange={setActiveTab}
+      />
 
-          <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
-            {/* Render Main Content Column (Posts Feed) */}
-            <div className="lg:col-span-3">
-              <CommunityPostsFeed
+      <div className="container mx-auto px-2 sm:px-4 py-6 max-w-7xl">
+        <div className="lg:grid lg:grid-cols-3 lg:gap-6">
+          <div className="lg:col-span-2 space-y-4">
+            {/* Show message if pending approval */}
+            {isAuthenticated && effectiveMember && derivedStatus === 'pending' && (
+                 <div className="bg-white p-4 rounded-md shadow-lg text-center text-gray-600 border-l-4 border-yellow-500">
+                    <p className="font-medium">Your request to join is pending approval.</p>
+                    <p className="text-sm text-gray-500 mt-1">You'll be able to create posts once approved.</p>
+                </div>
+            )}
+            
+            {/* Show prompt to join if authenticated but not a member */}
+            {isAuthenticated && !effectiveMember && (
+                 <div className="bg-white p-4 rounded-md shadow-lg text-center text-gray-600 border-l-4 border-blue-500">
+                    <p className="font-medium">Join the community to create posts and participate in discussions.</p>
+                </div>
+            )}
+
+            {/* Posts tab content */}
+            {activeTab === 'posts' && (
+              <div>
+                {/* Improved create post field with proper functionality */}
+                {isAuthenticated && (effectiveMember || isCreator) && derivedStatus !== 'pending' && (
+                  <div id="create-post" className="bg-white p-4 rounded-lg shadow-md mb-4 hover:shadow-lg transition-shadow">
+                    <div 
+                      onClick={createPost}
+                      className="bg-gray-100 rounded-full p-3 flex items-center cursor-pointer hover:bg-gray-200 transition-colors"
+                    >
+                      <img 
+                        src={user?.profile_image || '/default-avatar.png'} 
+                        alt="Profile" 
+                        className="w-10 h-10 rounded-full mr-3 border border-gray-200"
+                        onError={(e) => {
+                          e.currentTarget.onerror = null;
+                          e.currentTarget.src = 'https://ui-avatars.com/api/?name=' + (user?.username || 'User');
+                        }}
+                      />
+                      <span className="text-gray-500">Create a post in {community.name}...</span>
+                    </div>
+                  </div>
+                )}
+                
+                {/* Posts feed */}
+                <div className="bg-white rounded-lg shadow-lg overflow-hidden">
+                  <CommunityPostsFeed
+                    community={community}
+                    posts={displayPosts}
+                    isLoading={loadingPosts}
+                    user={user}
+                    slug={slug as string}
+                    isCreator={isCreator}
+                    isMember={effectiveMember ?? false} 
+                    membershipStatus={derivedStatus}
+                    postType="" 
+                    searchQuery="" 
+                    handlePostTypeChange={() => console.log('Post type change handler not implemented yet.')}
+                    handleSearchChange={() => console.log('Search change handler not implemented yet.')}
+                    handleUpvotePost={async () => console.log('Upvote handler not implemented yet.')}
+                  />
+                </div>
+                
+                {/* Display posts loading error if it occurred */}
+                {postsError && (
+                    <div className="text-center text-red-500 p-4 bg-red-50 rounded-md shadow-lg border border-red-200">
+                        <p className="font-medium">Error loading posts:</p>
+                        <p>{postsError}</p>
+                    </div>
+                )}
+
+                {/* Hidden create post button that can be triggered by the header */}
+                <button 
+                  className="create-post-btn hidden"
+                  onClick={createPost}
+                ></button>
+              </div>
+            )}
+            
+            {/* About tab content */}
+            {activeTab === 'about' && (
+              <AboutTab community={community} isCreator={isCreator} />
+            )}
+            
+            {/* Members tab content */}
+            {activeTab === 'members' && (
+              <MembersTab community={community} />
+            )}
+          </div>
+
+          <div className="hidden lg:block lg:col-span-1">
+            <div className="sticky top-20 space-y-4">
+              {/* Use the QuickLinks component with all required props */}
+              <QuickLinks 
                 community={community}
-                posts={posts}
-                user={user}
-                slug={slug as string}
-                isCreator={isCreator}
-                postType={postType}
-                searchQuery={searchQuery}
-                handlePostTypeChange={handlePostTypeChange}
-                handleSearchChange={handleSearchChange}
-                handleUpvotePost={handleUpvotePost}
-              />
-            </div>
-
-            {/* Render Sidebar Column */}
-            <div className="lg:col-span-1">
-              <CommunitySidebar
-                community={community}
-                isCreator={isCreator}
-                isAuthenticated={isAuthenticated}
-                slug={slug as string}
-                handleJoinCommunity={handleJoinCommunity}
-                handleLeaveCommunity={handleLeaveCommunity}
-                joinLoading={joinLoading}
+                activeTab={activeTab}
+                onTabChange={setActiveTab}
               />
             </div>
           </div>
         </div>
       </div>
-    </DashboardLayout>
+    </div>
+  );
+}
+
+export default function CommunityDetailPage(): React.ReactElement {
+  return (
+    <Suspense fallback={<LoadingSpinner fullScreen />}>
+      <DashboardLayout>
+        <CommunityDetailContent />
+      </DashboardLayout>
+    </Suspense>
   );
 }

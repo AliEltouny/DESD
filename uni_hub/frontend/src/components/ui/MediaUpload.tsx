@@ -197,15 +197,30 @@ export default function MediaUpload({
     }
 
     if (fileType === 'image' && preview) {
-      return (
-        <Image
-          src={preview}
-          alt="Preview"
-          fill
-          style={{ objectFit: "cover" }}
-          className={getPreviewStyles()}
-        />
-      );
+      // Special handling for circle/avatar previews
+      if (previewType === 'circle' || previewType === 'avatar') {
+        const size = previewType === 'circle' ? 96 : 128; // Corresponds to w-24/h-24 or w-32/h-32
+        return (
+          <Image
+            src={preview}
+            alt="Preview"
+            width={size}
+            height={size}
+            className={`object-cover ${previewType === 'circle' ? 'rounded-full' : 'rounded-lg'}`}
+          />
+        );
+      } else {
+        // Original handling for banner/square/default using fill
+        return (
+          <Image
+            src={preview}
+            alt="Preview"
+            fill
+            style={{ objectFit: "cover" }}
+            className={getPreviewStyles()} // Ensure this doesn't conflict
+          />
+        );
+      }
     }
 
     if (fileType === 'document') {
@@ -262,7 +277,7 @@ export default function MediaUpload({
 
       <div className="flex flex-col md:flex-row md:items-start gap-4">
         <div 
-          className={`${getPreviewContainerClasses()} border-2 ${
+          className={`relative ${getPreviewContainerClasses()} border-2 ${
             value ? "border-transparent" : "border-dashed border-gray-300"
           } flex items-center justify-center bg-gray-50`}
         >

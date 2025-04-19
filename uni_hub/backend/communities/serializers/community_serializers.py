@@ -4,9 +4,23 @@ from django.utils.text import slugify
 from drf_spectacular.utils import extend_schema_field
 from drf_spectacular.types import OpenApiTypes
 
-from ..models import Community, Membership
+from ..models import Community, Membership, CommunityInvitation, Post
 from .user_serializers import UserBasicSerializer
 from .post_serializers import PostSerializer
+
+
+class UserMembershipStatusSerializer(serializers.ModelSerializer):
+    """Serializer specifically for returning the user's membership status."""
+    is_member = serializers.SerializerMethodField()
+
+    class Meta:
+        model = Membership
+        fields = ['is_member', 'status', 'role']
+        read_only_fields = ['is_member', 'status', 'role']
+
+    def get_is_member(self, obj):
+        # If we are serializing a membership object, the user is a member.
+        return True
 
 
 class CommunitySerializer(serializers.ModelSerializer):

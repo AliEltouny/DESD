@@ -15,13 +15,13 @@ from drf_spectacular.utils import extend_schema, extend_schema_view, OpenApiPara
 from ..models import Community, Membership, CommunityInvitation, Post
 from ..serializers import (
     CommunitySerializer, CommunityDetailSerializer, CommunityCreateSerializer,
-    MembershipSerializer, CommunityInvitationSerializer
+    MembershipSerializer, CommunityInvitationSerializer, UserMembershipStatusSerializer
 )
 from ..permissions import IsCommunityAdminOrReadOnly, IsCommunityMember
 from ..services.community_service import CommunityService
 
 # Import views from separate modules
-from .membership_views import MembershipViews
+from .membership_views import MembershipViews # Keep for reference if needed, but remove inheritance
 from .analytics_views import AnalyticsViews
 from .invitation_views import InvitationViews
 
@@ -58,11 +58,34 @@ from .invitation_views import InvitationViews
         summary="Delete Community",
         description="Deletes a community. Only community admins can perform this action.",
     ),
+    join=extend_schema(
+        summary="Join Community",
+        description="Join a community. If the community requires approval, the membership will be pending.",
+        responses={201: None, 400: None},
+    ),
+    leave=extend_schema(
+        summary="Leave Community",
+        description="Leave a community. If you are the only admin, you cannot leave.",
+        responses={200: None, 400: None},
+    ),
+    members=extend_schema(
+        summary="List Community Members",
+        description="Get a list of members in a community.",
+        parameters=[
+            OpenApiParameter(name="role", description="Filter by role", required=False, type=str, enum=["admin", "moderator", "member"]),
+        ],
+        responses={200: MembershipSerializer(many=True)}
+    ),
+    membership_status=extend_schema(
+        summary="Get Membership Status",
+        description="Retrieves the current user's membership status for this community.",
+        responses={200: UserMembershipStatusSerializer}
+    ),
 )
 @method_decorator(csrf_exempt, name='dispatch')
 class CommunityViewSet(
     viewsets.ModelViewSet,
-    MembershipViews,
+    # MembershipViews, # Remove inheritance
     AnalyticsViews,
     InvitationViews
 ):
@@ -186,4 +209,70 @@ class CommunityViewSet(
                     status=status.HTTP_207_MULTI_STATUS
                 )
         
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST) 
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+    # --- Explicit Membership Actions --- 
+
+    @action(detail=True, methods=['post'], permission_classes=[IsAuthenticated])
+    def join(self, request, slug=None):
+        """Join a community"""
+        community = self.get_object() # Get community instance based on slug
+        user = request.user
+        
+        membership, message = CommunityService.join_community(user, community)
+        
+        if membership:
+            return Response({"detail": message}, status=status.HTTP_201_CREATED)
+        else:
+            return Response({"detail": message}, status=status.HTTP_400_BAD_REQUEST)
+    
+    @action(detail=True, methods=['post'], permission_classes=[IsAuthenticated]) # Using POST for leave as before
+    def leave(self, request, slug=None):
+        """Leave a community"""
+        community = self.get_object()
+        user = request.user
+        
+        success, message = CommunityService.leave_community(user, community)
+        
+        if success:
+            return Response({"detail": message}, status=status.HTTP_200_OK)
+        else:
+            return Response({"detail": message}, status=status.HTTP_400_BAD_REQUEST)
+    
+    @action(detail=True, methods=['get'], permission_classes=[IsAuthenticated]) # Simplified permission for now
+    def members(self, request, slug=None):
+        """Get community members"""
+        community = self.get_object()
+        role = request.query_params.get('role')
+        
+        memberships = CommunityService.get_community_members(community, role)
+        
+        serializer = MembershipSerializer(memberships, many=True, context=self.get_serializer_context())
+        return Response(serializer.data)
+
+    # --- End Explicit Membership Actions ---
+        
+    # --- Membership Status Action --- 
+    @action(detail=True, methods=['get'], permission_classes=[IsAuthenticated])
+    def membership_status(self, request, slug=None):
+        """Get the current user's membership status for this community."""
+        community = self.get_object()
+        user = request.user
+        
+        try:
+            membership = Membership.objects.get(community=community, user=user)
+            serializer = UserMembershipStatusSerializer(membership) # Use a dedicated serializer
+            return Response(serializer.data)
+        except Membership.DoesNotExist:
+            # If no membership exists, return a specific status
+            return Response({
+                'is_member': False,
+                'status': None, 
+                'role': None 
+            }, status=status.HTTP_200_OK) # Return 200 OK even if not a member
+        except Exception as e:
+            return Response({"detail": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+    
+    # --- End Membership Status Action ---
+
+    # ... existing invite action ... 

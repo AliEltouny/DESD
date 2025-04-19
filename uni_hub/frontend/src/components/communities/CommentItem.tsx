@@ -1,5 +1,5 @@
 import React from "react";
-import { Comment } from "@/services/communityService";
+import { Comment } from "@/types/api";
 import { formatDistanceToNow } from "date-fns";
 
 interface CommentItemProps {

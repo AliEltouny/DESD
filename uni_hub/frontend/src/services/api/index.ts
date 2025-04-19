@@ -3,14 +3,14 @@
  */
 
 // Base API and utilities
-export { default as baseApi, API_URL } from '../apiClient';
+export { default as baseApi, API_URL, getMediaUrl } from './apiClient';
 
-// Export all API services
-export { default as communityApi } from './communityApi';
-export { default as postApi } from './postApi';
-export { userApi } from './userApi';
-export { default as authApi } from './authApi';
-export { default as testimonialApi } from './testimonialApi';
+// Export all API services from their new subfolders
+export * from './auth/authApi';
+export * from './user/userApi';
+export * from './community/communityApi';
+export * from './community/postApi';
+export * from './landing/testimonialApi';
 
-// Export types
+// Export types (assuming they are in @/types/api)
 export * from '@/types/api'; 

@@ -10,10 +10,16 @@ import {
   Post,
   Comment,
   Membership,
-  CommunityDetail
+  CommunityDetail,
+  ApiSuccessResponse,
+  MembershipStatus,
+  PaginatedResponse,
+  CommunityMember,
+  CommunityAnalytics
 } from '@/types/api';
-import { handleApiError, processApiResponse } from '../errorHandling';
-import { memoryCache, localStorageCache } from '../cacheManager';
+import { handleApiError, processApiResponse } from '../../utils/errorHandling';
+import { memoryCache, localStorageCache } from '../../utils/cacheManager';
+import axios from 'axios';
 
 /**
  * CommunityAPI - Handles all community-related API operations
@@ -185,18 +191,19 @@ class CommunityAPI {
   /**
    * Get posts for a community
    */
-  async getPosts(communitySlug: string, filters?: PostFilters): Promise<Post[]> {
+  async getPosts(slug: string, filters?: PostFilters): Promise<PaginatedResponse<Post>> {
     try {
-      const response = await api.get<Post[]>(
-        `/communities/${communitySlug}/posts/`,
+      const response = await api.get<PaginatedResponse<Post>>(
+        `/communities/${slug}/posts/`,
         { params: filters }
       );
       
-      return processApiResponse<Post>(response.data, 'posts');
+      return response.data;
     } catch (error) {
-      return handleApiError<Post[]>(error, `posts for community "${communitySlug}"`, {
-        fallbackValue: [],
-        rethrow: false
+      return handleApiError<PaginatedResponse<Post>>(error, `posts for community "${slug}"`, {
+        fallbackValue: { results: [] },
+        rethrow: true,
+        defaultMessage: "Failed to load posts."
       });
     }
   }
@@ -227,17 +234,20 @@ class CommunityAPI {
   /**
    * Get members of a community
    */
-  async getCommunityMembers(slug: string, role?: string): Promise<Membership[]> {
-    const params = role ? { role } : undefined;
+  async getCommunityMembers(slug: string, role?: string): Promise<CommunityMember[]> {
+    const params: Record<string, string> = {};
+    if (role) {
+      params.role = role;
+    }
     try {
-      const response = await api.get<Membership[]>(
+      const response = await api.get<CommunityMember[]>(
         `/communities/${slug}/members/`,
         { params }
       );
       
-      return processApiResponse<Membership>(response.data, 'members');
+      return response.data;
     } catch (error) {
-      return handleApiError<Membership[]>(error, `members for community "${slug}"`, {
+      return handleApiError<CommunityMember[]>(error, `members for community "${slug}"`, {
         fallbackValue: [],
         rethrow: false
       });
@@ -248,93 +258,92 @@ class CommunityAPI {
    * Get analytics for a community
    */
   async getCommunityAnalytics(communitySlug: string): Promise<unknown> {
-    // Default analytics structure to return on errors or missing data
-    const defaultAnalytics = {
-      member_growth: { daily: [], monthly: [] },
-      post_activity: { daily: [], monthly: [] },
-      engagement_stats: {
-        total_members: 0,
-        total_posts: 0,
-        total_comments: 0,
-        total_upvotes: 0,
-        posts_per_member: 0,
-        comments_per_post: 0,
-        upvotes_per_post: 0
-      },
-      top_contributors: []
-    };
-
-    // Define cacheKey here so it's accessible in the outer catch block
-    const cacheKey = `analytics_${communitySlug}`;
-
     try {
-      // First check if the analytics data is cached in memory
-      if (memoryCache.isValid(cacheKey)) {
-        console.log("Using cached analytics data for", communitySlug);
-        return memoryCache.get(cacheKey) || defaultAnalytics;
+      const response = await api.get(`/communities/${communitySlug}/analytics`);
+      return response.data;
+    } catch (error) {
+      return handleApiError<unknown>(error, `analytics for community "${communitySlug}"`, {
+        fallbackValue: {},
+        rethrow: false
+      });
+    }
+  }
+
+  /**
+   * Get current user's membership status for a community.
+   */
+  async getMembershipStatus(slug: string): Promise<MembershipStatus> {
+    try {
+      // Ensure the slug is not undefined
+      if (!slug) {
+        throw new Error("Community slug is required for membership status");
       }
       
-      // Instead of making the direct API call which might cause console errors,
-      // make a custom fetch using regular fetch API to bypass Axios interceptors
-      try {
-        // Build the URL manually
-        const baseUrl = typeof window !== 'undefined' ? '/api' : API_URL;
-        const url = `${baseUrl}/communities/${communitySlug}/analytics/`;
-        
-        // Get the required auth headers
-        const token = document.cookie
-          .split(';')
-          .find(c => c.trim().startsWith('accessToken='))
-          ?.split('=')[1];
-        
-        // Make the fetch call with quiet error handling
-        const response = await fetch(url, {
-          headers: {
-            'Authorization': token ? `Bearer ${token}` : '',
-            'Content-Type': 'application/json',
-          },
-          credentials: 'include'
-        });
-        
-        if (!response.ok) {
-          // For 404s, silently return default data
-          if (response.status === 404) {
-            console.info(`Analytics not available yet for ${communitySlug}`);
-            memoryCache.set(cacheKey, defaultAnalytics, 60); // Cache for 1 minute
-            return defaultAnalytics;
-          }
-          throw new Error(`API Error: ${response.status} ${response.statusText}`);
-        }
-        
-        const data = await response.json();
-        
-        // Cache the successful result
-        memoryCache.set(cacheKey, data, 300); // Cache for 5 minutes
-        
-        // Return results or full data as appropriate
-        if (data && typeof data === 'object') {
-          if ('results' in data && data.results) {
-            return data.results;
-          }
-          return data;
-        }
-        
-        return defaultAnalytics;
-      } catch (error) {
-        // Log info but not as an error
-        console.info(`Analytics not available for ${communitySlug}:`, error instanceof Error ? error.message : "Unknown error");
-        memoryCache.set(cacheKey, defaultAnalytics, 60); // Cache for 1 minute
-        return defaultAnalytics;
-      }
-    } catch /* (error) */ {
-      // Handle any other unexpected errors
-      console.info(`Analytics unavailable for ${communitySlug}`);
-      memoryCache.set(cacheKey, defaultAnalytics, 60); // Cache for 1 minute
-      return defaultAnalytics;
+      // Clean up the slug
+      const cleanSlug = slug.trim().replace(/^\/+|\/+$/g, '');
+      
+      // Use a leading slash like all other working API methods
+      // IMPORTANT: Include leading slash to be consistent with other endpoints
+      // Note trailing slash is intentionally omitted since Django uses trailing_slash=False
+      const endpoint = `/communities/${cleanSlug}/membership_status`;
+      
+      // Log for debugging
+      console.log(`Making membership status request to: ${endpoint}`);
+      
+      const response = await api.get<MembershipStatus>(endpoint);
+      return response.data;
+    } catch (error) {
+      console.error("Membership status error:", error);
+      return handleApiError(error, `fetching membership status for ${slug}`, {
+        rethrow: true,
+        defaultMessage: "Failed to get membership status."
+      });
+    }
+  }
+
+  /**
+   * Join a community.
+   */
+  async joinCommunity(slug: string): Promise<ApiSuccessResponse> {
+    try {
+      // Clean the slug first
+      const cleanSlug = slug.trim().replace(/^\/+|\/+$/g, '');
+      
+      // Backend uses POST for join (without trailing slash)
+      const response = await api.post<ApiSuccessResponse>(
+        `/communities/${cleanSlug}/join`
+      );
+      return response.data;
+    } catch (error) {
+      return handleApiError(error, `joining community ${slug}`, {
+        rethrow: true,
+        defaultMessage: "Failed to join community."
+      });
+    }
+  }
+
+  /**
+   * Leave a community.
+   */
+  async leaveCommunity(slug: string): Promise<ApiSuccessResponse> {
+    try {
+      // Clean the slug first
+      const cleanSlug = slug.trim().replace(/^\/+|\/+$/g, '');
+      
+      // Backend uses POST for leave (without trailing slash)
+      const response = await api.post<ApiSuccessResponse>(
+        `/communities/${cleanSlug}/leave`
+      );
+      return response.data;
+    } catch (error) {
+      return handleApiError(error, `leaving community ${slug}`, {
+        rethrow: true,
+        defaultMessage: "Failed to leave community."
+      });
     }
   }
 }
 
-// Export a singleton instance
+// Export singleton instance
 export const communityApi = new CommunityAPI();
-export default communityApi;
+export default communityApi; 

@@ -5,7 +5,7 @@ import DashboardLayout from "@/components/layouts/DashboardLayout";
 import Input from "@/components/ui/Input";
 import Button from "@/components/ui/Button";
 import { useAuth } from "@/contexts/AuthContext";
-import { userApi } from "@/services/api/userApi";
+import { userApi } from "@/services/api";
 import { UserProfile } from "@/types/user";
 import { toast } from "react-hot-toast";
 

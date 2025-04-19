@@ -1,5 +1,5 @@
 import api from '../apiClient';
-import { handleApiError } from '../errorHandling';
+import { handleApiError } from '../../utils/errorHandling';
 import { PaginatedResponse } from '@/types/api';
 import { User, UserProfile } from '@/types/user';
 

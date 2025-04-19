@@ -8,7 +8,7 @@ import {
   PostDetail,
   Comment
 } from '@/types/api';
-import { handleApiError, processApiResponse } from '../errorHandling';
+import { handleApiError, processApiResponse } from '../../utils/errorHandling';
 
 /**
  * PostAPI - Handles all post-related API operations
@@ -257,18 +257,17 @@ class PostAPI {
         `/communities/${communitySlug}/posts/${postId}/comments/`,
         { params: filters }
       );
-      
       return processApiResponse<Comment>(response.data, 'comments');
     } catch (error) {
-      return handleApiError(error, `comments for post ${postId}`, {
+      return handleApiError<Comment[]>(error, `comments for post ${postId}`, {
         fallbackValue: [],
-        rethrow: false
+        rethrow: false,
       });
     }
   }
 
   /**
-   * Create a comment
+   * Create a comment on a post
    */
   async createComment(
     communitySlug: string,
@@ -282,15 +281,15 @@ class PostAPI {
       );
       return response.data;
     } catch (error) {
-      return handleApiError(error, "creating comment", {
+      return handleApiError(error, `adding comment to post ${postId}`, {
         rethrow: true,
-        defaultMessage: "Failed to post comment. Please try again later."
+        defaultMessage: "Failed to add comment. Please try again later."
       });
     }
   }
 
   /**
-   * Update a comment
+   * Update an existing comment
    */
   async updateComment(
     communitySlug: string,
@@ -354,6 +353,5 @@ class PostAPI {
   }
 }
 
-// Export a singleton instance
-export const postApi = new PostAPI();
-export default postApi; 
+// Export singleton instance
+export const postApi = new PostAPI(); 

@@ -1,5 +1,5 @@
 import { useMemo } from 'react';
-import { postApi } from '@/services/api/postApi';
+import { postApi } from '@/services/api';
 import { CommentFilters } from '@/types/api';
 import useApi, { useLazyApi } from './useApi';
 

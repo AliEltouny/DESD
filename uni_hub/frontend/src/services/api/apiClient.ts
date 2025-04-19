@@ -107,18 +107,30 @@ api.interceptors.response.use(
           throw new Error("No refresh token");
         }
 
-        await axios.post(`${API_URL}/token/refresh/`, {
+        // Use axios directly to avoid adding the expired access token again
+        // This request should not use the interceptor instance 'api'
+        const refreshResponse = await axios.post(`${API_URL}/token/refresh/`, {
           refresh: refreshToken,
         });
 
-        // Let the request proceed without manually setting header
-        return api(originalRequest);
-      } catch (refreshError) {
-        // Just redirect to login, AuthContext will handle cookie cleanup
-        if (typeof window !== "undefined") {
-          window.location.href = "/login";
-        }
+        // Assuming the refresh endpoint returns new tokens in response.data
+        // You might need to store the new accessToken from refreshResponse.data.access
+        // into cookies/localStorage here if your backend doesn't set HttpOnly cookies.
+        
+        // If using HttpOnly cookies set by the backend, this retry should just work
+        // as the new accessToken cookie will be sent automatically.
+        
+        // Retry the original request with the same config, potentially updated headers if needed
+        // The interceptor will now pick up the new token from the cookie/localStorage
+        return api(originalRequest); 
 
+      } catch (refreshError) {
+        console.error("Token refresh failed:", refreshError);
+        // Just redirect to login, AuthContext/Middleware should handle cookie cleanup
+        if (typeof window !== "undefined") {
+          // Consider using router.push('/login') if using Next.js router
+          window.location.href = "/login"; 
+        }
         return Promise.reject(refreshError);
       }
     }

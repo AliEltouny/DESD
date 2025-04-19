@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import AuthLayout from "@/components/layouts/AuthLayout";
 import Button from "@/components/ui/Button";
-import api from "@/services/api";
+import { baseApi } from "@/services/api";
 
 export default function ForgotPasswordPage() {
   const router = useRouter();
@@ -20,7 +20,7 @@ export default function ForgotPasswordPage() {
     setIsLoading(true);
 
     try {
-      await api.post("/password-reset/request", { email });
+      await baseApi.post("/password-reset/request", { email });
       setSuccess(true);
       // Scroll to top on success
       window.scrollTo({ top: 0, behavior: 'smooth' });

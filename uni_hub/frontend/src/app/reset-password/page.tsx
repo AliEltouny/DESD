@@ -6,7 +6,7 @@ import Link from "next/link";
 import AuthLayout from "@/components/layouts/AuthLayout";
 import Input from "@/components/ui/Input";
 import Button from "@/components/ui/Button";
-import api from "@/services/api";
+import { baseApi } from "@/services/api";
 
 export default function ResetPasswordPage() {
   const router = useRouter();
@@ -81,7 +81,7 @@ export default function ResetPasswordPage() {
     setIsLoading(true);
 
     try {
-      await api.post("/password-reset/confirm", {
+      await baseApi.post("/password-reset/confirm", {
         uid,
         token,
         new_password: newPassword,

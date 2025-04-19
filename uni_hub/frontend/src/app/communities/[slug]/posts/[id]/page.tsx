@@ -6,20 +6,17 @@ import { useAuth } from "@/contexts/AuthContext";
 import Link from "next/link";
 import Image from "next/image";
 import {
-  getPost,
-  getComments,
-  upvotePost,
-  upvoteComment,
+  communityApi,
+  postApi,
   Comment as CommentType,
   PostDetail,
-} from "@/services/communityService";
+} from "@/services/api";
 import { formatDistanceToNow } from "date-fns";
-import { getMediaUrl } from "@/services/api";
+import { getMediaUrl, baseApi } from "@/services/api";
 import CommentItem from "@/components/communities/CommentItem";
 import CommentForm from "@/components/communities/CommentForm";
 import DashboardLayout from "@/components/layouts/DashboardLayout";
 import { toast } from "react-hot-toast";
-import api from "@/services/apiClient";
 import { mutate } from "swr";
 
 export default function PostDetailPage() {
@@ -38,11 +35,11 @@ export default function PostDetailPage() {
         setLoading(true);
 
         // Fetch post details
-        const postData = await getPost(slug as string, parseInt(id as string));
+        const postData = await postApi.getPost(slug as string, parseInt(id as string));
         setPost(postData);
 
         // Fetch comments
-        const commentsData = await getComments(slug as string, parseInt(id as string));
+        const commentsData = await postApi.getComments(slug as string, parseInt(id as string));
         setComments(commentsData);
       } catch (err: unknown) {
         console.error("Failed to fetch post data:", err);
@@ -63,10 +60,10 @@ export default function PostDetailPage() {
     }
 
     try {
-      await upvotePost(slug as string, parseInt(id as string));
+      await postApi.upvotePost(slug as string, parseInt(id as string));
       
       // Refetch post to update upvote status
-      const updatedPost = await getPost(slug as string, parseInt(id as string));
+      const updatedPost = await postApi.getPost(slug as string, parseInt(id as string));
       setPost(updatedPost);
     } catch (err: unknown) {
       console.error("Failed to upvote post:", err);
@@ -80,10 +77,10 @@ export default function PostDetailPage() {
     }
 
     try {
-      await upvoteComment(slug as string, parseInt(id as string), commentId);
+      await postApi.upvoteComment(slug as string, parseInt(id as string), commentId);
       
       // Refetch comments to update upvote status
-      const updatedComments = await getComments(slug as string, parseInt(id as string));
+      const updatedComments = await postApi.getComments(slug as string, parseInt(id as string));
       setComments(updatedComments);
     } catch (err: unknown) {
       console.error("Failed to upvote comment:", err);
@@ -93,7 +90,7 @@ export default function PostDetailPage() {
   const handleCommentSubmit = async () => {
     if (!newComment.trim()) return;
     try {
-      await api.post(`/posts/${id}/comments`, { content: newComment });
+      await baseApi.post(`/posts/${id}/comments`, { content: newComment });
       mutate(`/communities/${slug}/posts/${id}/comments/`);
       mutate(`/communities/${slug}/posts/${id}/`);
       setNewComment("");

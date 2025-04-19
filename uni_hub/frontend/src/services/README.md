@@ -1,161 +1,77 @@
-# API Architecture Documentation
+# Frontend Services Module
 
-## Overview
+This directory contains modules responsible for interacting with backend APIs and providing shared utilities related to data fetching, caching, and error handling within the Uni Hub frontend application.
 
-The API architecture in this project follows a layered approach to ensure clean separation of concerns, maintainability, and type safety.
-
-## File Structure
+## Directory Structure
 
 ```
-src/services/
-├── apiClient.ts               # Base Axios instance with interceptors and config
-├── api.ts                     # Compatibility layer (deprecated)
-├── errorHandling.ts           # Centralized error handling utilities
-├── cacheManager.ts            # Caching mechanisms
-├── communityService.ts        # Legacy service functions (deprecated)
-├── api/                       # Domain-specific API modules
-│   ├── index.ts               # Re-exports API modules
-│   ├── authApi.ts             # Authentication API
-│   ├── communityApi.ts        # Community API
-│   ├── postApi.ts             # Posts API
-│   └── userApi.ts             # User API
-└── index.ts                   # Main service exports
+services/
+├── api/
+│   ├── auth/          # Authentication related API service calls
+│   ├── community/     # Community related API service calls
+│   ├── landing/       # Landing page related API service calls
+│   ├── user/          # User related API service calls
+│   ├── apiClient.ts   # Configured Axios instance for making API requests
+│   └── index.ts       # Exports all API service modules
+├── utils/
+│   ├── cacheManager.ts  # Utilities for managing client-side caching
+│   └── errorHandling.ts # Utilities for standardized API error handling
+└── README.md        # This file
 ```
 
-## Layer Descriptions
+## Core Components
 
-### 1. `apiClient.ts` - Base API Configuration
+### `api/`
 
-The foundation of the API layer, providing:
+This subdirectory houses all the logic related to making requests to the backend API. It is further organized by feature or resource type.
 
-- Configured Axios instance
-- Authentication interceptors
-- Token refresh handling
-- Error logging
-- Media URL utilities
+-   **`apiClient.ts`**:
+    -   Initializes and configures the primary HTTP client (likely Axios or Fetch) used for all backend communication.
+    -   Sets up base URL, default headers (e.g., `Content-Type`), and potentially interceptors for handling authentication tokens (e.g., adding `Authorization` headers) or global error responses.
+-   **Resource Subdirectories (`auth/`, `community/`, `landing/`, `user/`)**:
+    -   Each directory contains service files specific to a particular API resource or feature area.
+    -   Files within these directories define functions that encapsulate specific API endpoints (e.g., `loginUser`, `fetchCommunityDetails`, `updateUserProfile`).
+    -   These functions utilize the configured `apiClient` to perform the actual HTTP requests.
+-   **`index.ts`**:
+    -   Acts as a central export point for all API service modules, making them easily importable throughout the application.
+
+### `utils/`
+
+This subdirectory contains shared utility functions that support the API services or other parts of the application that deal with data fetching and management.
+
+-   **`cacheManager.ts`**:
+    -   Provides functions or classes for implementing client-side caching strategies.
+    -   This might involve using `localStorage`, `sessionStorage`, or in-memory caches to store frequently accessed data, reducing redundant API calls and improving performance.
+    -   Could include logic for cache invalidation based on time or specific actions.
+-   **`errorHandling.ts`**:
+    -   Offers standardized functions for handling errors returned from API calls.
+    -   May include functions to parse error responses, extract meaningful error messages for the user, log errors, or classify different types of errors (e.g., network errors, validation errors, server errors).
+
+## Usage
+
+To use an API service, import the required function from the relevant module, typically accessed via the central `api/index.ts` export.
 
 ```typescript
-import api, { API_URL } from '@/services/apiClient';
+import { authApi, userApi } from '@/services/api'; // Assuming index.ts exports like this
 
-// Usage example
-const response = await api.get('/communities/');
-```
-
-### 2. Domain-Specific API Modules
-
-Located in the `api/` directory, these modules encapsulate related API operations:
-
-- `communityApi.ts` - Community-related operations
-- `authApi.ts` - Authentication operations
-- `postApi.ts` - Post and comment operations
-- `userApi.ts` - User profile operations
-
-Each module:
-- Exports a singleton instance (`export const communityApi = new CommunityAPI()`)
-- Implements standardized error handling
-- Provides caching where appropriate
-
-```typescript
-// Example usage
-import { communityApi } from '@/services';
-const communities = await communityApi.getCommunities();
-```
-
-### 3. Error Handling (`errorHandling.ts`)
-
-Centralized error handling with:
-
-- Standardized error messages
-- HTTP status code interpretation
-- Fallback values for errors
-- Rethrow options for propagation
-
-```typescript
-return handleApiError(error, "fetching communities", {
-  fallbackValue: [],
-  rethrow: false
-});
-```
-
-### 4. Caching (`cacheManager.ts`)
-
-Two-tier caching strategy:
-
-- `memoryCache` - In-memory, fast access cache
-- `localStorageCache` - Persistent cache with TTL
-
-```typescript
-// Check cache first
-if (memoryCache.isValid('communities')) {
-  return memoryCache.get('communities');
+async function handleLogin(credentials) {
+  try {
+    const user = await authApi.login(credentials);
+    // Handle successful login
+  } catch (error) {
+    // Use error handling utilities if needed
+    console.error("Login failed:", error);
+  }
 }
 
-// After API call
-memoryCache.set('communities', data);
+async function fetchProfile(userId) {
+  try {
+    const profile = await userApi.getProfile(userId);
+    // Use profile data
+  } catch (error) {
+    // Handle error
+  }
+}
 ```
 
-## Deprecated Files
-
-### `api.ts`
-
-A compatibility layer that re-exports from `apiClient.ts`. Use `apiClient.ts` directly instead.
-
-### `communityService.ts`
-
-Legacy functions that now forward to the appropriate API modules. Use the domain API modules directly instead.
-
-## Import Guidelines
-
-### Preferred Imports
-
-```typescript
-// Preferred: Import API instances directly
-import { communityApi, postApi } from '@/services';
-
-// Preferred: Import types directly from types
-import { Community, Post } from '@/types/api';
-```
-
-### Deprecated Imports (Avoid)
-
-```typescript
-// Deprecated: Importing from legacy files
-import { getCommunities } from '@/services/communityService';
-```
-
-## Type Definitions
-
-All API-related types are centralized in `@/types/api.ts`:
-
-- API request interfaces
-- API response interfaces
-- Domain models (Community, Post, etc.)
-- Filter interfaces
-
-This ensures type consistency across the application and avoids circular dependencies.
-
-## Best Practices
-
-1. **Use Domain APIs directly**: Prefer `communityApi.getCommunities()` over legacy functions
-2. **Consistent error handling**: Always use the `handleApiError` utility
-3. **Cache appropriately**: Use caching for read-heavy operations
-4. **Type everything**: Leverage TypeScript interfaces for all API calls
-5. **API Parameters**: Use proper types for API parameters (filters, form data) 
-
-## Error Handling and Caching Considerations
-
-When working with the API layer, keep these considerations in mind:
-
-1. **User Object Serialization**: The backend cache implementation handles User objects by extracting their IDs to prevent serialization issues. If you're implementing cache-related functionality, make sure to handle non-serializable objects appropriately.
-
-2. **Cache Key Generation**: The cache key generation process includes safeguards for:
-   - User objects (converted to `User:{id}`)
-   - AnonymousUser objects (converted to `"AnonymousUser"`)
-   - Request objects (ignored)
-
-3. **Error Response Structure**: Backend errors follow a standardized format:
-   - Validation errors: Field-specific error messages 
-   - General errors: `detail` field with error message
-   - HTTP status codes: Appropriate codes for different error types (401, 403, 404, 500)
-
-4. **Frontend Error Handling**: The `handleApiError` utility in `errorHandling.ts` processes these standardized errors and provides appropriate feedback to the user interface. 
+Utilities like the `cacheManager` or `errorHandling` can be imported directly from the `utils` directory where needed. 

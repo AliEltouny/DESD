@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import Image from "next/image";
-import { Post } from "@/services/communityService";
+import { Post } from "@/types/api";
 import { formatDistanceToNow } from "date-fns";
 import { getMediaUrl } from "@/services/api";
 

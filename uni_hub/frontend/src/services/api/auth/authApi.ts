@@ -1,6 +1,6 @@
 import api, { API_URL } from '../apiClient';
 import axios from 'axios';
-import { handleApiError } from '../errorHandling';
+import { handleApiError } from '../../utils/errorHandling';
 
 interface AuthCredentials {
   email: string;

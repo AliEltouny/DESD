@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from "react";
 import Link from "next/link";
 import Image from "next/image";
-import { getCommunities } from "@/services/communityService";
+import { communityApi } from "@/services/api";
 import { Community } from "@/types/community";
 import Card from "@/components/ui/Card";
 import { getMediaUrl } from "@/services/api";
@@ -22,7 +22,7 @@ const CommunityRecommendations: React.FC<{ className?: string }> = ({
         setError(null);
 
         // Get newly created communities (latest ones, exclude ones the user is already a member of)
-        const data = await getCommunities({
+        const data = await communityApi.getCommunities({
           order_by: "created_at",
           limit: 3,
         });

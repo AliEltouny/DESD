@@ -5,7 +5,8 @@ from .user_serializers import UserBasicSerializer
 from .community_serializers import (
     CommunitySerializer, 
     CommunityDetailSerializer, 
-    CommunityCreateSerializer
+    CommunityCreateSerializer,
+    UserMembershipStatusSerializer
 )
 from .post_serializers import PostSerializer, PostDetailSerializer
 from .comment_serializers import CommentSerializer
@@ -18,6 +19,7 @@ __all__ = [
     'CommunitySerializer',
     'CommunityDetailSerializer',
     'CommunityCreateSerializer',
+    'UserMembershipStatusSerializer',
     'PostSerializer',
     'PostDetailSerializer',
     'CommentSerializer',

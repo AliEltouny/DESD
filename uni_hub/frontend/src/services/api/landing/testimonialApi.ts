@@ -1,5 +1,5 @@
 import api from '../apiClient';
-import { handleApiError } from '../errorHandling';
+import { handleApiError } from '../../utils/errorHandling';
 import { Testimonial } from '@/types/testimonial'; // Import Testimonial type
 
 // Define a type for the testimonial data payload

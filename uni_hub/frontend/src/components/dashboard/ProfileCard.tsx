@@ -1,13 +1,31 @@
 import React from "react";
 import Card from "../ui/Card";
-import { useAuth } from "@/contexts/AuthContext";
+import { useUser } from "@/contexts/UserContext";
 
 interface ProfileCardProps {
   className?: string;
 }
 
 const ProfileCard: React.FC<ProfileCardProps> = ({ className = "" }) => {
-  const { user } = useAuth();
+  const { user, isLoadingProfile } = useUser();
+
+  if (isLoadingProfile) {
+    return (
+      <Card title="Your Profile" className={className}>
+        <div className="animate-pulse space-y-4">
+          <div className="flex items-center gap-5">
+            <div className="w-20 h-20 bg-gray-200 rounded-full"></div>
+            <div className="flex-1 space-y-2">
+              <div className="h-4 bg-gray-200 rounded w-3/4"></div>
+              <div className="h-3 bg-gray-200 rounded w-1/2"></div>
+            </div>
+          </div>
+          <div className="h-2 bg-gray-200 rounded w-full"></div>
+          <div className="h-3 bg-gray-200 rounded w-1/4"></div>
+        </div>
+      </Card>
+    );
+  }
 
   if (!user) return null;
 
@@ -34,8 +52,8 @@ const ProfileCard: React.FC<ProfileCardProps> = ({ className = "" }) => {
       <div className="flex flex-col sm:flex-row items-center sm:items-start gap-5">
         {/* Profile Image */}
         <div className="w-20 h-20 bg-blue-100 rounded-full flex items-center justify-center text-blue-600 text-xl font-semibold">
-          {user.first_name[0]}
-          {user.last_name[0]}
+          {user.first_name?.[0] || ''}
+          {user.last_name?.[0] || user.username?.[0] || 'U'}
         </div>
 
         {/* User Details */}

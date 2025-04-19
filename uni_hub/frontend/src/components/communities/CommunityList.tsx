@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { getCommunities } from "@/services/communityService";
+import { communityApi } from "@/services/api";
 import { Community } from "@/types/community";
 import CommunityCard from "./CommunityCard";
 import { useAuth } from "@/contexts/AuthContext";
@@ -81,7 +81,7 @@ const CommunityList: React.FC<CommunityListProps> = ({
         }
 
         console.log("Fetching communities with params:", params);
-        const data = await getCommunities(params);
+        const data = await communityApi.getCommunities({ ...params });
         console.log("Received communities data:", data);
         
         if (Array.isArray(data)) {

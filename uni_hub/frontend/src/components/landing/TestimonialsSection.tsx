@@ -2,7 +2,8 @@
 
 import React, { useState, useEffect } from "react";
 import Image from "next/image";
-import { testimonialApi, getMediaUrl } from "@/services";
+import { getMediaUrl } from "@/services/api/apiClient";
+import { testimonialApi } from "@/services/api/landing/testimonialApi";
 import { Testimonial } from "@/types/testimonial";
 
 // Fallback mock data

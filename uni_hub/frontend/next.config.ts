@@ -69,6 +69,17 @@ const nextConfig: NextConfig = {
     const mediaUrl = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://backend:8000';
 
     return [
+      // Handle communities membership_status endpoint specially (without trailing slash to match Django)
+      {
+        source: '/api/communities/:slug/membership_status',
+        destination: `${apiUrl}/communities/:slug/membership_status`,
+      },
+      // Handle communities endpoint (Django routes with trailing_slash=False)
+      {
+        source: '/api/communities/:path*',
+        destination: `${apiUrl}/communities/:path*`,
+      },
+      // General API rewrite
       {
         source: '/api/:path*',
         destination: `${apiUrl}/:path*`,
