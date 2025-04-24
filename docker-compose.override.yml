@@ -1,0 +1,41 @@
+version: "3.8"
+
+# Development specific overrides
+services:
+  backend:
+    ports:
+      - "8000:8000" # Publish backend port for dev access
+    volumes:
+      # Mount local source code for live reloading
+      - ./backend:/app
+    environment:
+      - DEBUG=True # Enable Django debug mode
+    # Command to run migrations and the Django development server
+    command: >
+      bash -c "export DJANGO_SETTINGS_MODULE=core.settings &&
+               python manage.py migrate &&
+               daphne -b 0.0.0.0 -p 8000 core.asgi:application"
+
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile.dev # Use the dedicated dev Dockerfile
+    ports:
+      - "3000:3000" # Publish frontend port for dev access
+    volumes:
+      # Mount local source code for live reloading
+      - ./frontend:/app
+      # Use a named volume for node_modules to persist them
+      # but exclude the host node_modules from overriding the container's
+      - /app/node_modules
+      # Mount .next folder for HMR and caching in dev
+      - /app/.next
+    environment:
+      # Enable polling for filesystem changes if needed (e.g., in Docker Desktop on Windows/macOS)
+      - CHOKIDAR_USEPOLLING=true
+      - WATCHPACK_POLLING=true
+    # Use the development command (overrides CMD in Dockerfile)
+    command: ["npm", "run", "dev", "--", "-p", "3000"]
+    stdin_open: true # Keep stdin open for interaction
+    tty: true # Allocate a pseudo-TTY 
