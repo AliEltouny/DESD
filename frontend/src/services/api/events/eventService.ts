@@ -16,5 +16,17 @@ export const createEvent = (formData: FormData) =>
       "Content-Type": "multipart/form-data",
     },
   });
-export const updateEvent = (id: number, data: any) => api.put(`/api/events/${id}/`, data);
-export const deleteEvent = (id: number) => api.delete(`/api/events/${id}/`);
+// Add proper typing for update
+export const updateEvent = async (id: number, data: FormData): Promise<Event> => {
+  const response = await api.put(`/api/events/${id}/`, data, {
+    headers: {
+      'Content-Type': 'multipart/form-data',
+    },
+  });
+  return response.data;
+};
+
+// Make sure delete is properly typed
+export const deleteEvent = async (id: number): Promise<void> => {
+  await api.delete(`/api/events/${id}/`);
+};

@@ -16,6 +16,7 @@ class EventSerializer(serializers.ModelSerializer):
         queryset=Community.objects.all(),
         required=False
     )
+    image = serializers.ImageField(required=False, allow_null=True)
 
     class Meta:
         model = Event
@@ -73,6 +74,12 @@ class EventSerializer(serializers.ModelSerializer):
         validated_data['created_by'] = self.context.get('request').user
         return super().create(validated_data)
 
+    def update(self, instance, validated_data):
+        # Handle image deletion if null is passed
+        if 'image' in validated_data and validated_data['image'] is None:
+            instance.image.delete(save=False)
+        return super().update(instance, validated_data)
+
 
 class JoinEventSerializer(serializers.ModelSerializer):
     """
@@ -91,6 +98,7 @@ class JoinEventSerializer(serializers.ModelSerializer):
             raise serializers.ValidationError("This event has been canceled.")
         if event.is_full:
             raise serializers.ValidationError("This event has reached its participant limit.")
+
         if event.is_private:
             if not event.community:
                 raise serializers.ValidationError("Private event is missing a community.")

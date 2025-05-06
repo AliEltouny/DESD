@@ -3,21 +3,33 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import toast from "react-hot-toast";
-import { createEvent } from "@/services/api/events/eventService";
+import { createEvent, updateEvent } from "@/services/api/events/eventService";
 import { communityApi } from "@/services/api/community/communityApi";
 import { Community } from "@/types/community";
+import { Event } from "@/types/event";
 
-const CreateEventForm = () => {
+interface CreateEventFormProps {
+  initialData?: Event | null;
+  isEditing?: boolean;
+}
+
+const CreateEventForm = ({ initialData, isEditing = false }: CreateEventFormProps) => {
   const router = useRouter();
 
-  const [title, setTitle] = useState("");
-  const [description, setDescription] = useState("");
-  const [dateTime, setDateTime] = useState("");
-  const [location, setLocation] = useState("");
-  const [participantLimit, setParticipantLimit] = useState<number | null>(null);
-  const [isPrivate, setIsPrivate] = useState(false);
+  const [title, setTitle] = useState(initialData?.title || "");
+  const [description, setDescription] = useState(initialData?.description || "");
+  const [dateTime, setDateTime] = useState(
+    initialData?.date_time
+      ? new Date(initialData.date_time).toISOString().slice(0, 16)
+      : ''
+  );
+  const [location, setLocation] = useState(initialData?.location || "");
+  const [participantLimit, setParticipantLimit] = useState<number | null>(initialData?.participant_limit || null);
+  const [isPrivate, setIsPrivate] = useState(initialData?.is_private || false);
   const [image, setImage] = useState<File | null>(null);
-  const [communityId, setCommunityId] = useState<number | null>(null);
+  const [communityId, setCommunityId] = useState<number | null>(
+    initialData?.community?.id || null // Access the nested community ID
+  );
 
   const [adminCommunities, setAdminCommunities] = useState<Community[]>([]);
   const [error, setError] = useState<string | null>(null);
@@ -28,13 +40,18 @@ const CreateEventForm = () => {
       try {
         const communities = await communityApi.getCommunities({ role: "admin" });
         setAdminCommunities(communities || []);
+        if (isEditing && initialData?.community) {
+          setCommunityId(initialData.community.id); // Access the nested community ID
+        }
       } catch (err) {
         console.error("Failed to fetch communities:", err);
       }
     };
 
-    if (isPrivate) fetchCommunities();
-  }, [isPrivate]);
+    if (isPrivate || (isEditing && initialData?.is_private)) {
+      fetchCommunities();
+    }
+  }, [isPrivate, isEditing, initialData]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -58,16 +75,26 @@ const CreateEventForm = () => {
         formDataToSend.append("community", communityId.toString());
       }
 
-      if (image) {
+      if (image instanceof File) {
         formDataToSend.append("image", image);
+      } else if (image === null && initialData?.image) {
+        // Add empty field to clear existing image
+        formDataToSend.append("image", "");
       }
 
-      const response = await createEvent(formDataToSend);
-      toast.success("🎉 Event created successfully!");
-      router.push("/events");
+      let response;
+      if (isEditing && initialData) {
+        response = await updateEvent(initialData.id, formDataToSend);
+        toast.success("🎉 Event updated successfully!");
+        router.push(`/events/${response.id}`); // Fix response handling
+      } else {
+        response = await createEvent(formDataToSend);
+        toast.success("🎉 Event created successfully!");
+        router.push("/events");
+      }
     } catch (err) {
-      console.error("Failed to create event:", err);
-      setError("Failed to create event. Please check your inputs.");
+      console.error("Failed to save event:", err);
+      setError(`Failed to ${isEditing ? "update" : "create"} event. Please check your inputs.`);
     } finally {
       setSubmitting(false);
     }
@@ -75,6 +102,9 @@ const CreateEventForm = () => {
 
   return (
     <form className="space-y-6 bg-white p-8 rounded-lg shadow-lg max-w-xl mx-auto" onSubmit={handleSubmit}>
+      <h1 className="text-2xl font-bold mb-6">
+        {isEditing ? "Edit Event" : "Create New Event"}
+      </h1>
       <div>
         <label className="block text-sm font-semibold text-gray-800 mb-1">Title</label>
         <input
@@ -180,7 +210,13 @@ const CreateEventForm = () => {
         className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-lg"
         disabled={submitting}
       >
-        {submitting ? "Creating..." : "Create Event"}
+        {submitting
+          ? isEditing
+            ? "Updating..."
+            : "Creating..."
+          : isEditing
+          ? "Update Event"
+          : "Create Event"}
       </button>
     </form>
   );

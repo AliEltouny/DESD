@@ -48,19 +48,23 @@ class EventListCreateView(generics.ListCreateAPIView):
 
 class EventDetailView(generics.RetrieveUpdateDestroyAPIView):
     """
-    GET, PUT/PATCH, DELETE a single event.
-    Only the creator can update/delete it.
+    GET: Any authenticated user can view public events.
+    PUT/PATCH/DELETE: Only the creator can modify/delete.
     """
     queryset = Event.objects.select_related('community', 'created_by')
     serializer_class = EventSerializer
-    permission_classes = [permissions.IsAuthenticated, IsEventCreator]
+
+    def get_permissions(self):
+        if self.request.method in permissions.SAFE_METHODS:
+            return [permissions.IsAuthenticated()]  # Allow all authenticated users to view
+        return [permissions.IsAuthenticated(), IsEventCreator()]  # Only creator can edit/delete
 
 
 class JoinEventView(APIView):
     """
     POST: Join an event if permitted.
     """
-    permission_classes = [permissions.IsAuthenticated, IsCommunityMember]
+    permission_classes = [permissions.IsAuthenticated]  # Removed IsCommunityMember check
 
     def post(self, request, pk):
         try:
