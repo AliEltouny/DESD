@@ -111,6 +111,12 @@ class PasswordResetRequestSerializer(serializers.Serializer):
         return value
 
 
+class UserSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = User
+        fields = ('id', 'email', 'username', 'first_name', 'last_name')
+
+
 class PasswordResetConfirmSerializer(serializers.Serializer):
     uid = serializers.CharField(required=True)
     token = serializers.CharField(required=True)
@@ -140,4 +146,4 @@ class PasswordResetConfirmSerializer(serializers.Serializer):
             raise serializers.ValidationError({"token": "Invalid or expired token."})
         
         attrs['user'] = user
-        return attrs 
+        return attrs

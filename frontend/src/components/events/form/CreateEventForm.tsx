@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import toast from "react-hot-toast";
+import { showToast } from "@/utils/toastHelper"; // Import showToast
 import { createEvent, updateEvent } from "@/services/api/events/eventService";
 import { communityApi } from "@/services/api/community/communityApi";
 import { Community } from "@/types/community";
@@ -28,7 +28,7 @@ const CreateEventForm = ({ initialData, isEditing = false }: CreateEventFormProp
   const [isPrivate, setIsPrivate] = useState(initialData?.is_private || false);
   const [image, setImage] = useState<File | null>(null);
   const [communityId, setCommunityId] = useState<number | null>(
-    initialData?.community?.id || null // Access the nested community ID
+    initialData?.community?.id || null
   );
 
   const [adminCommunities, setAdminCommunities] = useState<Community[]>([]);
@@ -41,7 +41,7 @@ const CreateEventForm = ({ initialData, isEditing = false }: CreateEventFormProp
         const communities = await communityApi.getCommunities({ role: "admin" });
         setAdminCommunities(communities || []);
         if (isEditing && initialData?.community) {
-          setCommunityId(initialData.community.id); // Access the nested community ID
+          setCommunityId(initialData.community.id);
         }
       } catch (err) {
         console.error("Failed to fetch communities:", err);
@@ -78,18 +78,17 @@ const CreateEventForm = ({ initialData, isEditing = false }: CreateEventFormProp
       if (image instanceof File) {
         formDataToSend.append("image", image);
       } else if (image === null && initialData?.image) {
-        // Add empty field to clear existing image
         formDataToSend.append("image", "");
       }
 
       let response;
       if (isEditing && initialData) {
         response = await updateEvent(initialData.id, formDataToSend);
-        toast.success("🎉 Event updated successfully!");
-        router.push(`/events/${response.id}`); // Fix response handling
+        showToast.success("🎉 Event updated successfully!"); // Use showToast
+        router.push(`/events/${response.data.id}`);
       } else {
         response = await createEvent(formDataToSend);
-        toast.success("🎉 Event created successfully!");
+        showToast.success("🎉 Event created successfully!"); // Use showToast
         router.push("/events");
       }
     } catch (err) {
@@ -105,6 +104,7 @@ const CreateEventForm = ({ initialData, isEditing = false }: CreateEventFormProp
       <h1 className="text-2xl font-bold mb-6">
         {isEditing ? "Edit Event" : "Create New Event"}
       </h1>
+  
       <div>
         <label className="block text-sm font-semibold text-gray-800 mb-1">Title</label>
         <input
@@ -115,7 +115,7 @@ const CreateEventForm = ({ initialData, isEditing = false }: CreateEventFormProp
           required
         />
       </div>
-
+  
       <div>
         <label className="block text-sm font-semibold text-gray-800 mb-1">Description</label>
         <textarea
@@ -126,7 +126,7 @@ const CreateEventForm = ({ initialData, isEditing = false }: CreateEventFormProp
           required
         />
       </div>
-
+  
       <div>
         <label className="block text-sm font-semibold text-gray-800 mb-1">Date & Time</label>
         <input
@@ -137,7 +137,7 @@ const CreateEventForm = ({ initialData, isEditing = false }: CreateEventFormProp
           required
         />
       </div>
-
+  
       <div>
         <label className="block text-sm font-semibold text-gray-800 mb-1">Location</label>
         <input
@@ -148,7 +148,7 @@ const CreateEventForm = ({ initialData, isEditing = false }: CreateEventFormProp
           required
         />
       </div>
-
+  
       <div>
         <label className="block text-sm font-semibold text-gray-800 mb-1">Participant Limit (optional)</label>
         <input
@@ -162,7 +162,7 @@ const CreateEventForm = ({ initialData, isEditing = false }: CreateEventFormProp
           }
         />
       </div>
-
+  
       <div className="flex items-center">
         <input
           type="checkbox"
@@ -173,7 +173,7 @@ const CreateEventForm = ({ initialData, isEditing = false }: CreateEventFormProp
         />
         <label htmlFor="isPrivate" className="text-sm font-semibold text-gray-800">Private Event (linked to a community)</label>
       </div>
-
+  
       {isPrivate && (
         <div>
           <label className="block text-sm font-semibold text-gray-800 mb-1">Select Community</label>
@@ -192,7 +192,7 @@ const CreateEventForm = ({ initialData, isEditing = false }: CreateEventFormProp
           </select>
         </div>
       )}
-
+  
       <div>
         <label className="block text-sm font-semibold text-gray-800 mb-1">Image (optional)</label>
         <input
@@ -202,9 +202,9 @@ const CreateEventForm = ({ initialData, isEditing = false }: CreateEventFormProp
           className="block w-full text-sm text-gray-700 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
         />
       </div>
-
+  
       {error && <p className="text-red-500 text-sm">{error}</p>}
-
+  
       <button
         type="submit"
         className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-lg"

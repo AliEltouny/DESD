@@ -6,9 +6,9 @@ import { Event } from "@/types/event";
 import { fetchEvent, fetchMyEvents, joinEvent, leaveEvent, deleteEvent } from "@/services/api/events/eventService";
 import LoadingSpinner from "@/components/ui/LoadingSpinner";
 import { getMediaUrl } from "@/services/api/apiClient";
-import toast from "react-hot-toast";
-import { useAuth } from "@/contexts/AuthContext";
-import DashboardLayout from "@/components/layouts/DashboardLayout"; // Import DashboardLayout
+import { showToast } from "@/utils/toastHelper";
+import { useUser } from "@/contexts/UserContext"; // Import useUser
+import DashboardLayout from "@/components/layouts/DashboardLayout";
 
 export default function EventDetailPage() {
   const params = useParams();
@@ -21,7 +21,19 @@ export default function EventDetailPage() {
   const [joined, setJoined] = useState(false);
   const [joining, setJoining] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
-  const { user } = useAuth();
+  const { user, isLoadingProfile } = useUser(); // Use user and profile loading state
+
+  // Debug logs to verify data
+  console.log("User from context:", user);
+  console.log("Event creator:", event?.created_by);
+  console.log("isLoadingProfile:", isLoadingProfile);
+
+  // Check if event.created_by is a number or an object
+  const isCreator =
+    !isLoadingProfile &&
+    user?.id === (typeof event?.created_by === "number" ? event.created_by : event?.created_by?.id);
+
+  console.log("Computed isCreator:", isCreator);
 
   useEffect(() => {
     const loadEvent = async () => {
@@ -61,8 +73,8 @@ export default function EventDetailPage() {
       await joinEvent(event.id);
       setJoined(true);
       setEvent({ ...event, participant_count: event.participant_count + 1 });
-      router.push("/events"); // Redirect to the main events page
-      setTimeout(() => toast.success("You joined the event!"), 200); // Show toast after redirect
+      router.push("/events");
+      setTimeout(() => showToast.success("You joined the event!"), 200);
     } catch (err) {
       console.error("Join failed:", err);
       alert("Failed to join event.");
@@ -78,8 +90,8 @@ export default function EventDetailPage() {
       await leaveEvent(event.id);
       setJoined(false);
       setEvent({ ...event, participant_count: event.participant_count - 1 });
-      router.push("/events"); // Redirect to the main events page
-      setTimeout(() => toast.success("You left the event."), 200); // Show toast after redirect
+      router.push("/events");
+      setTimeout(() => showToast.success("You left the event."), 200);
     } catch (err) {
       console.error("Leave failed:", err);
       alert("Failed to leave event.");
@@ -94,11 +106,11 @@ export default function EventDetailPage() {
     setIsDeleting(true);
     try {
       await deleteEvent(event.id);
-      toast.success("Event deleted successfully");
+      showToast.success("Event deleted successfully");
       router.push("/events");
     } catch (err) {
       console.error("Delete failed:", err);
-      toast.error("Failed to delete event");
+      showToast.error("Failed to delete event");
     } finally {
       setIsDeleting(false);
     }
@@ -108,8 +120,6 @@ export default function EventDetailPage() {
     if (!event) return;
     router.push(`/events/${event.id}/edit`);
   };
-
-  const isCreator = user?.id === event?.created_by.id;
 
   if (loading) return <LoadingSpinner fullScreen />;
   if (error || !event)
@@ -166,23 +176,17 @@ export default function EventDetailPage() {
 
             {!event.is_canceled && (
               <div className="mt-6">
-                {joined ? (
-                  <button
-                    onClick={handleLeave}
-                    className="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-md"
-                    disabled={joining}
-                  >
-                    {joining ? "Leaving..." : "Leave Event"}
-                  </button>
-                ) : (
-                  <button
-                    onClick={handleJoin}
-                    className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-md"
-                    disabled={joining || event.is_full}
-                  >
-                    {event.is_full ? "Event Full" : joining ? "Joining..." : "Join Event"}
-                  </button>
-                )}
+                <button
+                  onClick={handleJoin}
+                  disabled={joining || event.is_full}
+                  className={`${
+                    event.is_full || event.is_canceled
+                      ? "bg-gray-400 cursor-not-allowed"
+                      : "bg-green-600 hover:bg-green-700"
+                  } text-white px-4 py-2 rounded-md`}
+                >
+                  {event.is_full ? "Event Full" : joining ? "Joining..." : "Join Event"}
+                </button>
               </div>
             )}
 

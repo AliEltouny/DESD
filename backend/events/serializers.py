@@ -3,13 +3,14 @@ from django.utils import timezone
 from users.models import User
 from communities.models import Community, Membership
 from .models import Event, EventParticipant
+from users.serializers import UserSerializer 
 
 
 class EventSerializer(serializers.ModelSerializer):
     """
     Serializer for creating and listing events.
     """
-    created_by = serializers.StringRelatedField(read_only=True)
+    created_by = UserSerializer(read_only=True)
     participant_count = serializers.SerializerMethodField()
     is_full = serializers.SerializerMethodField()
     community = serializers.PrimaryKeyRelatedField(

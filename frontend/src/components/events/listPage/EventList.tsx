@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { Event } from "@/types/events";
 import { fetchEvents, fetchMyEvents } from "@/services/api/events/eventService";
 import EventCard from "../EventCard";
+import EventCardSkeleton from "../EventCardSkeleton";
 
 interface EventListProps {
   title?: string;
@@ -101,7 +102,11 @@ const EventList: React.FC<EventListProps> = ({
       )}
 
       {loading ? (
-        <p className="text-center text-gray-500">Loading events...</p>
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+          {[...Array(6)].map((_, i) => (
+            <EventCardSkeleton key={i} />
+          ))}
+        </div>
       ) : error ? (
         <div className="text-center text-red-500">
           {error}
