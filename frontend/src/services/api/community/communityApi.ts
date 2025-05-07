@@ -309,9 +309,9 @@ class CommunityAPI {
       // Clean the slug first
       const cleanSlug = slug.trim().replace(/^\/+|\/+$/g, '');
       
-      // Backend uses POST for join (without trailing slash)
+      // Backend uses POST for join (with trailing slash)
       const response = await api.post<ApiSuccessResponse>(
-        `/api/communities/${cleanSlug}/join`
+        `/api/communities/${cleanSlug}/join/`
       );
       return response.data;
     } catch (error) {
@@ -330,9 +330,9 @@ class CommunityAPI {
       // Clean the slug first
       const cleanSlug = slug.trim().replace(/^\/+|\/+$/g, '');
       
-      // Backend uses POST for leave (without trailing slash)
+      // Backend uses POST for leave (with trailing slash)
       const response = await api.post<ApiSuccessResponse>(
-        `/api/communities/${cleanSlug}/leave`
+        `/api/communities/${cleanSlug}/leave/`
       );
       return response.data;
     } catch (error) {

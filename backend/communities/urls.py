@@ -20,8 +20,8 @@ post_router.register(r'comments', CommentViewSet, basename='post-comments')
 
 # Explicit paths for custom actions on CommunityViewSet
 community_actions = [
-    path('communities/<slug:slug>/join/', CommunityViewSet.as_view({'post': 'join'}), name='community-join'),
-    path('communities/<slug:slug>/leave/', CommunityViewSet.as_view({'post': 'leave'}), name='community-leave'),
+    path('communities/<slug:slug>/join', CommunityViewSet.as_view({'post': 'join'}), name='community-join'),
+    path('communities/<slug:slug>/leave', CommunityViewSet.as_view({'post': 'leave'}), name='community-leave'),
     path('communities/<slug:slug>/members/', CommunityViewSet.as_view({'get': 'members'}), name='community-members'),
     path('communities/<slug:slug>/membership_status/', CommunityViewSet.as_view({'get': 'membership_status'}), name='community-membership-status'),
     path('communities/<slug:slug>/invite/', CommunityViewSet.as_view({'post': 'invite'}), name='community-invite'),

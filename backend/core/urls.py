@@ -6,8 +6,15 @@ from django.views.static import serve
 import os
 from django.views.decorators.csrf import csrf_exempt
 from rest_framework.decorators import api_view
-from django.http import HttpResponse
+from django.http import HttpResponse, JsonResponse
 from drf_spectacular.views import SpectacularAPIView, SpectacularRedocView, SpectacularSwaggerView
+from rest_framework import status
+
+# Import the community debug view and viewset
+from communities.debug_views import debug_join_community
+from communities.views import CommunityViewSet
+from communities.models import Community
+from communities.services.community_service import CommunityService
 
 # Special view to debug API requests
 @api_view(['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'])
@@ -24,26 +31,68 @@ def debug_api(request, path):
         content_type="text/plain"
     )
 
+# Direct implementation of the join community endpoint
+@api_view(['POST'])
+@csrf_exempt
+def direct_join_community(request, slug):
+    """Direct implementation of the join community endpoint"""
+    print(f"DIRECT JOIN: Request to join community with slug: {slug}")
+    
+    if not request.user.is_authenticated:
+        return JsonResponse({
+            'detail': 'Authentication required'
+        }, status=status.HTTP_401_UNAUTHORIZED)
+    
+    try:
+        # Get the community directly
+        community = Community.objects.get(slug=slug)
+        print(f"DIRECT JOIN: Found community {community.name}")
+        
+        # Use the service layer to join the community
+        membership, message = CommunityService.join_community(request.user, community)
+        
+        if membership:
+            return JsonResponse({"detail": message}, status=status.HTTP_201_CREATED)
+        else:
+            return JsonResponse({"detail": message}, status=status.HTTP_400_BAD_REQUEST)
+    
+    except Community.DoesNotExist:
+        print(f"DIRECT JOIN: Community with slug '{slug}' not found")
+        return JsonResponse({
+            "detail": f"Community with slug '{slug}' not found"
+        }, status=status.HTTP_404_NOT_FOUND)
+    
+    except Exception as e:
+        print(f"DIRECT JOIN: Error joining community: {str(e)}")
+        return JsonResponse({
+            "detail": f"Error joining community: {str(e)}"
+        }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
 urlpatterns = [
     path('admin/', admin.site.urls),
-
+    
+    # Special direct debug endpoint for community join
+    path('api/communities/<slug:slug>/join_debug/', debug_join_community, name='community-join-debug'),
+    
+    # Use our direct implementation instead of CommunityViewSet
+    path('api/communities/<slug:slug>/join/', direct_join_community, name='community-join-direct'),
+    
     # API routes
     path('api/', include('api.urls')),
     path('api/events/', include('events.urls')),
-    path('api/users/', include('users.urls')),  # Added users URL configuration
+    path('api/users/', include('users.urls')),
     
-    # Fix: Include communities URLs directly at the API root
-    # This prevents URL nesting issues
+    # Communities URLs included at the API root - NOTE: This is included LAST to avoid URL conflicts
     path('api/', include('communities.urls')),
-
-    # Debug catch-all
+    
+    # Debug catch-all - must be after all other API routes
     path('api/debug/<path:path>', debug_api),
-
+    
     # OpenAPI / Swagger docs
     path('api/schema/', SpectacularAPIView.as_view(), name='schema'),
     path('api/docs/', SpectacularSwaggerView.as_view(url_name='schema'), name='swagger-ui'),
     path('api/redoc/', SpectacularRedocView.as_view(url_name='schema'), name='redoc'),
-
+    
     # Serve media files in dev
     path('media/<path:path>', serve, {
         'document_root': os.path.join(settings.BASE_DIR, 'media'),
