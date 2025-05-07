@@ -4,6 +4,8 @@ from users.models import User
 from communities.models import Community, Membership
 from .models import Event, EventParticipant
 from users.serializers import UserSerializer 
+from django.core.mail import send_mail
+from django.conf import settings
 
 
 class EventSerializer(serializers.ModelSerializer):
@@ -76,10 +78,58 @@ class EventSerializer(serializers.ModelSerializer):
         return super().create(validated_data)
 
     def update(self, instance, validated_data):
-        # Handle image deletion if null is passed
+        # Save original values before update
+        original = {
+            "title": instance.title,
+            "description": instance.description,
+            "date_time": instance.date_time,
+            "location": instance.location,
+        }
+
+        # Handle image deletion if null
         if 'image' in validated_data and validated_data['image'] is None:
             instance.image.delete(save=False)
-        return super().update(instance, validated_data)
+
+        updated_instance = super().update(instance, validated_data)
+
+        # Check if important fields changed
+        has_changed = any(
+            original[field] != getattr(updated_instance, field)
+            for field in original
+        )
+
+        if has_changed:
+            self.send_update_emails(updated_instance)
+
+        return updated_instance
+
+    def send_update_emails(self, event):
+        participants = EventParticipant.objects.filter(event=event).select_related("user")
+        subject = f"📢 Event Updated: {event.title}"
+
+        for participant in participants:
+            user = participant.user
+            if not user.email:
+                continue
+
+            message = (
+                f"Hi {user.first_name or user.username},\n\n"
+                f"The event you joined has been updated. Here are the new details:\n\n"
+                f"🗓 Title: {event.title}\n"
+                f"📅 Date & Time: {event.date_time.strftime('%Y-%m-%d %H:%M')}\n"
+                f"📍 Location: {event.location}\n\n"
+                f"📖 Description:\n{event.description}\n\n"
+                f"You can view this event at: {settings.FRONTEND_URL}/events/{event.id}\n\n"
+                f"Thank you,\nUniHub Team"
+            )
+
+            send_mail(
+                subject,
+                message,
+                settings.DEFAULT_FROM_EMAIL,
+                [user.email],
+                fail_silently=True,
+            )
 
 
 class JoinEventSerializer(serializers.ModelSerializer):

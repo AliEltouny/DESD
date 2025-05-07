@@ -2,6 +2,9 @@ from rest_framework import generics, permissions, status
 from rest_framework.response import Response
 from rest_framework.exceptions import PermissionDenied, NotFound
 from rest_framework.views import APIView
+from .utils.email import send_event_join_confirmation
+from django.core.mail import send_mail
+from django.conf import settings
 
 from .models import Event, EventParticipant
 from .serializers import (
@@ -59,12 +62,43 @@ class EventDetailView(generics.RetrieveUpdateDestroyAPIView):
             return [permissions.IsAuthenticated()]  # Allow all authenticated users to view
         return [permissions.IsAuthenticated(), IsEventCreator()]  # Only creator can edit/delete
 
+    def perform_destroy(self, instance):
+        # Fetch participants before deletion
+        participants = EventParticipant.objects.filter(event=instance).select_related("user")
+        subject = f"❌ Event Cancelled: {instance.title}"
+
+        for participant in participants:
+            user = participant.user
+            if not user.email:
+                continue
+
+            message = (
+                f"Hi {user.first_name or user.username},\n\n"
+                f"We regret to inform you that the event you joined has been cancelled:\n\n"
+                f"🗓 Title: {instance.title}\n"
+                f"📅 Date & Time: {instance.date_time.strftime('%Y-%m-%d %H:%M')}\n"
+                f"📍 Location: {instance.location}\n\n"
+                f"We apologize for any inconvenience caused.\n\n"
+                f"Best regards,\nUniHub Team"
+            )
+
+            send_mail(
+                subject,
+                message,
+                settings.DEFAULT_FROM_EMAIL,
+                [user.email],
+                fail_silently=True,
+            )
+
+        # Now delete the event
+        super().perform_destroy(instance)
+
 
 class JoinEventView(APIView):
     """
     POST: Join an event if permitted.
     """
-    permission_classes = [permissions.IsAuthenticated]  # Removed IsCommunityMember check
+    permission_classes = [permissions.IsAuthenticated]
 
     def post(self, request, pk):
         try:
@@ -78,6 +112,10 @@ class JoinEventView(APIView):
         )
         serializer.is_valid(raise_exception=True)
         serializer.save()
+
+        # ✅ Send confirmation email
+        send_event_join_confirmation(request.user, event)
+
         return Response({"detail": "Successfully joined the event."}, status=status.HTTP_201_CREATED)
 
 

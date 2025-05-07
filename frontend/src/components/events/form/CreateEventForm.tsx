@@ -21,17 +21,18 @@ const CreateEventForm = ({ initialData, isEditing = false }: CreateEventFormProp
   const [dateTime, setDateTime] = useState(
     initialData?.date_time
       ? new Date(initialData.date_time).toISOString().slice(0, 16)
-      : ''
+      : ""
   );
   const [location, setLocation] = useState(initialData?.location || "");
   const [participantLimit, setParticipantLimit] = useState<number | null>(initialData?.participant_limit || null);
   const [isPrivate, setIsPrivate] = useState(initialData?.is_private || false);
-  const [image, setImage] = useState<File | null>(null);
+  const [image, setImage] = useState<File | null | undefined>(undefined); // Allow undefined for no changes
   const [communityId, setCommunityId] = useState<number | null>(
     initialData?.community?.id || null
   );
 
-  const [adminCommunities, setAdminCommunities] = useState<Community[]>([]);
+  const [allAdminCommunities, setAllAdminCommunities] = useState<Community[]>([]); // Original list
+  const [filteredCommunities, setFilteredCommunities] = useState<Community[]>([]); // Filtered list
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
 
@@ -39,7 +40,9 @@ const CreateEventForm = ({ initialData, isEditing = false }: CreateEventFormProp
     const fetchCommunities = async () => {
       try {
         const communities = await communityApi.getCommunities({ role: "admin" });
-        setAdminCommunities(communities || []);
+        setAllAdminCommunities(communities || []);
+        setFilteredCommunities(communities || []);
+
         if (isEditing && initialData?.community) {
           setCommunityId(initialData.community.id);
         }
@@ -59,6 +62,15 @@ const CreateEventForm = ({ initialData, isEditing = false }: CreateEventFormProp
     setError(null);
 
     try {
+      if (isPrivate && communityId) {
+        const selected = allAdminCommunities.find((c) => c.id === communityId);
+        if (!selected) {
+          showToast.error("❌ You must be a leader/admin of the selected community.");
+          setSubmitting(false);
+          return;
+        }
+      }
+
       const formDataToSend = new FormData();
       formDataToSend.append("title", title);
       formDataToSend.append("description", description);
@@ -77,24 +89,59 @@ const CreateEventForm = ({ initialData, isEditing = false }: CreateEventFormProp
 
       if (image instanceof File) {
         formDataToSend.append("image", image);
-      } else if (image === null && initialData?.image) {
+      } else if (image === null) {
+        // Send "image": "" only if the user chooses to remove the image
         formDataToSend.append("image", "");
       }
 
       let response;
       if (isEditing && initialData) {
         response = await updateEvent(initialData.id, formDataToSend);
-        showToast.success("🎉 Event updated successfully!"); // Use showToast
+        showToast.success("🎉 Event updated successfully!");
         router.push(`/events/${response.data.id}`);
       } else {
         response = await createEvent(formDataToSend);
-        showToast.success("🎉 Event created successfully!"); // Use showToast
+        showToast.success("🎉 Event created successfully!");
         router.push("/events");
       }
-    } catch (err) {
-      console.error("Failed to save event:", err);
-      setError(`Failed to ${isEditing ? "update" : "create"} event. Please check your inputs.`);
-    } finally {
+    } 
+    catch (err: any) {
+      const errorData = err?.response?.data;
+      let serverMsg = "An error occurred.";
+    
+      // Helper: extract first field-specific error if available
+      const extractFirstError = (data: any): string => {
+        if (typeof data === "string") return data;
+    
+        if (Array.isArray(data)) {
+          return data.map(extractFirstError).join(", ");
+        }
+    
+        if (typeof data === "object") {
+          // Prioritize 'errors' or Django-style field errors
+          if (data.errors && Array.isArray(data.errors) && data.errors.length > 0) {
+            const first = data.errors[0];
+            return first?.message || first?.detail || JSON.stringify(first);
+          }
+    
+          const firstKey = Object.keys(data)[0];
+          const firstVal = data[firstKey];
+          if (Array.isArray(firstVal)) return firstVal[0];
+          return typeof firstVal === "string" ? firstVal : JSON.stringify(firstVal);
+        }
+    
+        return String(data);
+      };
+    
+      if (errorData) {
+        serverMsg = extractFirstError(errorData);
+      }
+    
+      showToast.error(`❌ ${serverMsg}`);
+      setError(serverMsg);
+    }
+    
+    finally {
       setSubmitting(false);
     }
   };
@@ -177,6 +224,18 @@ const CreateEventForm = ({ initialData, isEditing = false }: CreateEventFormProp
       {isPrivate && (
         <div>
           <label className="block text-sm font-semibold text-gray-800 mb-1">Select Community</label>
+          <input
+            type="text"
+            placeholder="Search your communities..."
+            className="mb-2 block w-full rounded-md border px-3 py-2 text-sm text-gray-900 bg-white shadow-sm focus:ring-blue-500 focus:border-blue-500"
+            onChange={(e) => {
+              const keyword = e.target.value.toLowerCase();
+              const filtered = allAdminCommunities.filter((c) =>
+                c.name.toLowerCase().includes(keyword)
+              );
+              setFilteredCommunities(filtered);
+            }}
+          />
           <select
             className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 shadow-sm focus:ring-blue-500 focus:border-blue-500 text-sm text-gray-900"
             value={communityId || ""}
@@ -184,7 +243,7 @@ const CreateEventForm = ({ initialData, isEditing = false }: CreateEventFormProp
             required
           >
             <option value="" disabled>Select your community</option>
-            {adminCommunities.map((c) => (
+            {filteredCommunities.map((c) => (
               <option key={c.id} value={c.id}>
                 {c.name}
               </option>
@@ -195,12 +254,34 @@ const CreateEventForm = ({ initialData, isEditing = false }: CreateEventFormProp
   
       <div>
         <label className="block text-sm font-semibold text-gray-800 mb-1">Image (optional)</label>
+        {!image && initialData?.image && (
+          <div className="mb-2">
+            <p className="text-sm text-gray-600 mb-1">Current Image:</p>
+            <img
+              src={initialData.image}
+              alt="Current event"
+              className="w-full h-48 object-cover rounded-md"
+            />
+          </div>
+        )}
         <input
           type="file"
           accept="image/*"
-          onChange={(e) => setImage(e.target.files?.[0] || null)}
+          onChange={(e) => setImage(e.target.files?.[0] || undefined)}
           className="block w-full text-sm text-gray-700 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
         />
+        {initialData?.image && !image && (
+          <div className="flex items-center gap-2 mt-2">
+            <input
+              type="checkbox"
+              id="removeImage"
+              onChange={(e) => setImage(e.target.checked ? null : undefined)}
+            />
+            <label htmlFor="removeImage" className="text-sm text-gray-700">
+              Remove current image
+            </label>
+          </div>
+        )}
       </div>
   
       {error && <p className="text-red-500 text-sm">{error}</p>}

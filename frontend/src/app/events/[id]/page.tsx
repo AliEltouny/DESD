@@ -75,9 +75,10 @@ export default function EventDetailPage() {
       setEvent({ ...event, participant_count: event.participant_count + 1 });
       router.push("/events");
       setTimeout(() => showToast.success("You joined the event!"), 200);
-    } catch (err) {
+    } catch (err: any) {
       console.error("Join failed:", err);
-      alert("Failed to join event.");
+      const msg = err?.response?.data?.detail || "Failed to join event.";
+      showToast.error(`❌ ${msg}`);
     } finally {
       setJoining(false);
     }
@@ -145,62 +146,70 @@ export default function EventDetailPage() {
               className="w-full h-64 object-cover"
             />
           )}
-          <div className="p-6">
-            <h1 className="text-3xl font-bold text-gray-900">{event.title}</h1>
-            <p className="text-gray-700 mt-2">{event.description}</p>
-            <div className="mt-4 space-y-1 text-sm text-gray-600">
-              <p>
-                <strong>Date:</strong>{" "}
-                {new Date(event.date_time).toLocaleString()}
-              </p>
-              <p>
-                <strong>Location:</strong> {event.location}
-              </p>
-              <p>
-                <strong>Participants:</strong>{" "}
-                {event.participant_count} / {event.participant_limit ?? "∞"}
-              </p>
+          <div className="p-6 space-y-6">
+            <h1 className="text-3xl font-extrabold text-gray-900">{event.title}</h1>
+
+            <p className="text-gray-700 text-base">{event.description}</p>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-3 text-sm text-gray-700">
+              <p><strong>Date:</strong> {new Date(event.date_time).toLocaleString()}</p>
+              <p><strong>Location:</strong> {event.location}</p>
+              <p><strong>Participants:</strong> {event.participant_count} / {event.participant_limit ?? "∞"}</p>
               {event.participant_limit !== null && (
-                <p>
-                  <strong>Spots Left:</strong>{" "}
-                  {event.participant_limit - event.participant_count}
-                </p>
+                <p><strong>Spots Left:</strong> {event.participant_limit - event.participant_count}</p>
               )}
+              <p><strong>Created By:</strong> {event.created_by?.username}</p>
               <p>
-                <strong>Privacy:</strong> {event.is_private ? "Private" : "Public"}
+                <strong>Privacy:</strong>{" "}
+                <span className={`inline-block px-2 py-0.5 rounded-full text-xs font-semibold ${
+                  event.is_private ? "bg-yellow-100 text-yellow-800" : "bg-green-100 text-green-800"
+                }`}>
+                  {event.is_private ? "Private" : "Public"}
+                </span>
               </p>
               {event.is_canceled && (
-                <p className="text-red-600 font-semibold">⚠️ This event is canceled.</p>
+                <p className="col-span-2 text-red-600 font-semibold">⚠️ This event is canceled.</p>
               )}
             </div>
 
-            {!event.is_canceled && (
-              <div className="mt-6">
+            {!event.is_canceled && !isCreator && (
+            <div className="pt-4 flex gap-3">
+              {joined ? (
+                <button
+                  onClick={handleLeave}
+                  disabled={joining}
+                  className="w-full sm:w-auto px-5 py-2 rounded-md font-medium text-white bg-yellow-600 hover:bg-yellow-700"
+                >
+                  {joining ? "Leaving..." : "Leave Event"}
+                </button>
+              ) : (
                 <button
                   onClick={handleJoin}
                   disabled={joining || event.is_full}
-                  className={`${
-                    event.is_full || event.is_canceled
+                  className={`w-full sm:w-auto px-5 py-2 rounded-md font-medium text-white ${
+                    event.is_full
                       ? "bg-gray-400 cursor-not-allowed"
                       : "bg-green-600 hover:bg-green-700"
-                  } text-white px-4 py-2 rounded-md`}
+                  }`}
                 >
                   {event.is_full ? "Event Full" : joining ? "Joining..." : "Join Event"}
                 </button>
-              </div>
-            )}
+              )}
+            </div>
+          )}
 
+            
             {isCreator && (
-              <div className="mt-4 flex gap-2">
+              <div className="flex flex-wrap gap-3 pt-6">
                 <button
                   onClick={handleEdit}
-                  className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-md"
+                  className="bg-blue-600 hover:bg-blue-700 text-white px-5 py-2 rounded-md font-medium"
                 >
                   Edit Event
                 </button>
                 <button
                   onClick={handleDelete}
-                  className="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-md"
+                  className="bg-red-600 hover:bg-red-700 text-white px-5 py-2 rounded-md font-medium"
                   disabled={isDeleting}
                 >
                   {isDeleting ? "Deleting..." : "Delete Event"}
