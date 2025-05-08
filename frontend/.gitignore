@@ -55,3 +55,4 @@ yarn-error.log*
 
 # Firebase credentials
 firebase-adminsdk.json
+backend/firebase/firebase-adminsdk.json
