@@ -2,6 +2,11 @@
 
 Uni Hub is a platform for university students to manage their profiles, communities, and events. The project consists of a Django backend (using Django REST Framework) and a Next.js frontend, both running in Docker containers.
 
+# Github repo url: 
+
+https://github.com/AliEltouny/DESD
+
+
 ## Features
 
 - User registration with email verification via OTP
