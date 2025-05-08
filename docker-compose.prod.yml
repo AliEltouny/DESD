@@ -1,0 +1,50 @@
+version: "3.8"
+
+# Production specific overrides
+services:
+  backend:
+    ports:
+      # Expose backend port, potentially for a reverse proxy upstream
+      - "8000:8000"
+    # No source code volume mount in production
+    volumes:
+      - media_volume:/app/media # Only persistent volumes
+    environment:
+      - DEBUG=False # Disable Django debug mode
+      - CORS_ALLOWED_ORIGINS=https://yourdomain.com,http://localhost:3000 # Adjust for your production frontend URL(s)
+    # Command to run migrations and the production server (gunicorn)
+    # Assumes your Django project directory is named 'uni_hub_project'
+    # You might need to adjust 'uni_hub_project.wsgi:application'
+    # Adjusted based on directory structure:
+    command: >
+      bash -c "python manage.py migrate &&
+               gunicorn core.wsgi:application --bind 0.0.0.0:8000"
+
+  frontend:
+    ports:
+      # Expose frontend port, potentially for a reverse proxy upstream
+      - "3000:3000"
+    # No source code volume mounts in production
+    volumes: []
+    # Ensure production environment is set (though Dockerfile does this)
+    environment:
+      - NODE_ENV=production
+    # Command is taken from the Dockerfile CMD (npm run start)
+    # Setting command: [] would explicitly use the Dockerfile CMD
+    command: []
+    # Not needed for production server
+    stdin_open: false
+    tty: false 
+
+  cron:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    command: >
+      sh -c "while true; do
+        python manage.py delete_expired_events;
+        sleep 3600;
+      done"
+    depends_on:
+      - db
+      - backend

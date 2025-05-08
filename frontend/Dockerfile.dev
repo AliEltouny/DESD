@@ -1,0 +1,23 @@
+# Dockerfile for Frontend Development Environment
+FROM node:18-alpine
+
+# Set working directory
+WORKDIR /app
+
+# Copy package.json and package-lock.json first to leverage Docker cache
+COPY package.json package-lock.json* ./
+
+# Install ALL dependencies (including devDependencies)
+RUN npm install
+
+# Copy the rest of the application code
+# Note: This is less critical if using volume mounts extensively,
+# but can be useful for initial setup or if mounts are slow.
+# COPY . .
+
+# Expose the port Next.js runs on
+EXPOSE 3000
+
+# Default command to run the development server
+# This will likely be overridden by docker-compose.override.yml, but good practice to have it.
+CMD ["npm", "run", "dev"] 
