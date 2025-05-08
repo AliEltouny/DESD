@@ -10,6 +10,9 @@ import TestimonialsSection from "@/components/landing/TestimonialsSection";
 import StatsSection from "@/components/landing/StatsSection";
 import FaqSection from "@/components/landing/FaqSection";
 import CtaSection from "@/components/landing/CtaSection";
+import CommunityPreviewSection from "@/components/landing/CommunityPreviewSection";
+import EventPreviewSection from "@/components/landing/EventPreviewSection";
+
 
 export default function HomePage() {
   // State for header transparency on scroll
@@ -90,6 +93,12 @@ export default function HomePage() {
       <main className="flex-grow pt-16">
         {/* Hero Section */}
         <HeroSection />
+
+        {/* Community Preview Section */}
+        <CommunityPreviewSection />
+        
+        {/* Event Preview Section */}
+        <EventPreviewSection />
 
         {/* Features Section */}
         <FeaturesSection />

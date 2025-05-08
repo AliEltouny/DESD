@@ -7,6 +7,9 @@ import AuthLayout from "@/components/layouts/AuthLayout";
 import Input from "@/components/ui/Input";
 import Button from "@/components/ui/Button";
 import { useAuth } from "@/contexts/AuthContext";
+import { signInWithPopup } from "firebase/auth";
+import { auth, googleProvider } from "@/firebase"; // adjust path if needed
+
 
 // Create a client component that uses useSearchParams
 const LoginForm = () => {
@@ -167,6 +170,25 @@ const LoginForm = () => {
           <div className="grid grid-cols-2 gap-3">
             <button
               type="button"
+              onClick={async () => {
+                try {
+                  const result = await signInWithPopup(auth, googleProvider);
+                  const user = result.user;
+                  const token = await user.getIdToken();
+              
+                  // Store data in localStorage
+                  localStorage.setItem("firebaseToken", token);
+                  localStorage.setItem("userEmail", user.email || "");
+                  localStorage.setItem("userName", user.displayName || "");
+              
+                  // Redirect to complete-profile
+                  window.location.href = "/complete-profile";
+                } catch (error) {
+                  console.error("❌ Google login error", error);
+                  alert("Google login failed. Try again.");
+                }
+              }}
+              
               className="inline-flex justify-center items-center px-4 py-2 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 transition-colors"
             >
               <svg
@@ -178,19 +200,7 @@ const LoginForm = () => {
               </svg>
               Google
             </button>
-            <button
-              type="button"
-              className="inline-flex justify-center items-center px-4 py-2 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 transition-colors"
-            >
-              <svg
-                className="w-5 h-5 mr-2 text-blue-800"
-                viewBox="0 0 24 24"
-                fill="currentColor"
-              >
-                <path d="M20.0073 0H3.9927C1.7888 0 0 1.7888 0 3.9927V20.0073C0 22.2112 1.7888 24 3.9927 24H12V14.4H9.6V10.8H12V8.4C12 5.3019 13.7947 3.6 16.5615 3.6C17.8845 3.6 19.0566 3.7072 19.3845 3.7555V7.05H17.5269C16.1073 7.05 15.8077 7.7294 15.8077 8.7054V10.8H19.2L18.7615 14.4H15.8077V24H20.0073C22.2112 24 24 22.2112 24 20.0073V3.9927C24 1.7888 22.2112 0 20.0073 0Z" />
-              </svg>
-              Facebook
-            </button>
+            
           </div>
 
           <div className="text-center">

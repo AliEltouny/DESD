@@ -231,3 +231,5 @@ if DEBUG:
             }
         }
     }
+
+FIREBASE_ADMIN_CREDENTIAL = os.path.join(BASE_DIR, 'firebase', 'firebase-adminsdk.json')

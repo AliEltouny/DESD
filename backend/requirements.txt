@@ -16,3 +16,4 @@ hiredis==2.2.3
 django-db-connection-pool==1.2.2
 drf-nested-routers==0.93.4
 daphne==4.0.0
+firebase-admin

@@ -51,3 +51,7 @@ yarn-error.log*
 *.njsproj
 *.sln
 *.sw?
+
+# Firebase admin credentials
+firebase-adminsdk.json
+backend/firebase/firebase-adminsdk.json

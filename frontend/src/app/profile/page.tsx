@@ -6,11 +6,13 @@ import Input from "@/components/ui/Input";
 import Button from "@/components/ui/Button";
 import { useAuth } from "@/contexts/AuthContext";
 import { useUser } from "@/contexts/UserContext";
-import { userApi, getMediaUrl } from "@/services/api";
+import { userApi, getMediaUrl, baseApi } from "@/services/api";
 import { UserProfile } from "@/types/user";
 import { toast } from "react-hot-toast";
 import { FileUpload } from "@/components/ui";
 import { Select } from "@/components/ui";
+
+
 import Link from "next/link";
 
 const ProfilePage = () => {
@@ -129,6 +131,22 @@ const ProfilePage = () => {
     }
   };
 
+  const handleResetPasswordFromProfile = async () => {
+    try {
+      const res = await baseApi.post("/api/password-reset/request/", {
+        email: user?.email,
+      });
+      if (res.status === 200) {
+        toast.success("Reset link sent to your email.");
+      }
+    } catch (err) {
+      console.error(err);
+      toast.error("Failed to send reset link.");
+    }
+  };
+  
+  
+
   const studyProgramOptions = [
     { value: "", label: "Select a program" },
     { value: "architecture", label: "Architecture" },
@@ -160,7 +178,6 @@ const ProfilePage = () => {
     return option ? option.label : value;
   };
 
-  // Render view mode for personal info
   const renderPersonalInfoView = () => (
     <div className="space-y-6">
       <div className="flex items-center mb-6">
@@ -184,7 +201,7 @@ const ProfilePage = () => {
           <p className="text-gray-600">@{formData.username}</p>
         </div>
       </div>
-
+  
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <div>
           <h3 className="text-sm font-medium text-gray-500">Email</h3>
@@ -192,7 +209,9 @@ const ProfilePage = () => {
         </div>
         <div>
           <h3 className="text-sm font-medium text-gray-500">Date of Birth</h3>
-          <p className="mt-1 text-base text-gray-900">{formData.date_of_birth ? formatDate(formData.date_of_birth) : "Not provided"}</p>
+          <p className="mt-1 text-base text-gray-900">
+            {formData.date_of_birth ? formatDate(formData.date_of_birth) : "Not provided"}
+          </p>
         </div>
         <div>
           <h3 className="text-sm font-medium text-gray-500">Address</h3>
@@ -203,8 +222,18 @@ const ProfilePage = () => {
           <p className="mt-1 text-base text-gray-900">{formData.post_code || "Not provided"}</p>
         </div>
       </div>
+  
+      <div className="pt-4">
+        <button
+          onClick={handleResetPasswordFromProfile}
+          className="bg-red-500 text-white font-semibold py-2 px-4 rounded hover:bg-red-600 transition-all"
+        >
+          Reset Password
+        </button>
+      </div>
     </div>
   );
+  
 
   // Render view mode for academic info
   const renderAcademicInfoView = () => (

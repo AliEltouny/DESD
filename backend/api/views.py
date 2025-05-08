@@ -9,6 +9,11 @@ from django.db.models import Q
 from django.http import JsonResponse
 from django.conf import settings
 import os
+import firebase_admin
+from firebase_admin import auth as firebase_auth, credentials
+from rest_framework.decorators import authentication_classes
+from .auth import NoAuth
+
 
 from users.models import User
 from users.serializers import (
@@ -350,3 +355,64 @@ def password_reset_confirm(request):
         }, status=status.HTTP_200_OK)
     
     return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+# Only init Firebase once
+if not firebase_admin._apps:
+    cred = credentials.Certificate(settings.FIREBASE_ADMIN_CREDENTIAL)
+    firebase_admin.initialize_app(cred)
+
+
+@api_view(['POST'])
+@permission_classes([AllowAny])
+@authentication_classes([NoAuth])
+def firebase_register(request):
+    request._auth = None  # ✅ Important fix
+
+    auth_header = request.headers.get("Authorization", "")
+    token = auth_header.replace("Bearer ", "")
+
+    if not token:
+        return Response({"message": "Missing Firebase token."}, status=401)
+
+    try:
+        decoded = firebase_auth.verify_id_token(token)
+        email = decoded.get("email")
+        uid = decoded.get("uid")
+    except Exception as e:
+        return Response({"message": "Invalid Firebase token.", "error": str(e)}, status=401)
+
+    # ✅ Use get_or_create to avoid duplicate error
+    user, created = User.objects.get_or_create(
+        email=email,
+        defaults={
+            "username": email,
+            "first_name": request.data.get("first_name"),
+            "last_name": request.data.get("last_name"),
+            "date_of_birth": request.data.get("date_of_birth"),
+            "academic_year": request.data.get("academic_year"),
+        }
+    )
+
+    # Optional: update if user existed but had empty profile
+    if not created:
+        user.first_name = user.first_name or request.data.get("first_name")
+        user.last_name = user.last_name or request.data.get("last_name")
+        user.date_of_birth = user.date_of_birth or request.data.get("date_of_birth")
+        user.academic_year = user.academic_year or request.data.get("academic_year")
+        user.save()
+
+    refresh = RefreshToken.for_user(user)
+    return Response({
+        "message": "User logged in via Google.",
+        "refresh": str(refresh),
+        "access": str(refresh.access_token),
+        "user": {
+            "id": user.id,
+            "email": user.email,
+            "first_name": user.first_name,
+            "last_name": user.last_name,
+            "academic_year": user.academic_year,
+            "date_of_birth": user.date_of_birth,
+        }
+    }, status=200 if not created else 201)
+

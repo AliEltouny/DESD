@@ -49,6 +49,8 @@ urlpatterns = [
     path('testimonials/<int:pk>/', views.TestimonialViewSet.as_view({
         'get': 'retrieve',
     }), name='testimonial-detail-with-slash'),
+    path('firebase-register/', views.firebase_register, name='firebase-register'),
+
 
     # User search and direct message
     path('users/search/', user_search, name='user-search'),

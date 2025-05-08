@@ -13,6 +13,8 @@ RUN pip install --no-cache-dir -r requirements.txt
 
 # Copy project
 COPY . .
+# Copy firebase credentials explicitly
+COPY ./firebase /app/firebase
 
 # Run collectstatic 
 # --noinput avoids prompts, useful in non-interactive environments
