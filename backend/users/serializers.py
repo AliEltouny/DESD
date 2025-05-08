@@ -25,7 +25,19 @@ class UserRegistrationSerializer(serializers.ModelSerializer):
         required=True,
         style={'input_type': 'password'}
     )
+#to validate '@live.uwe.ac.uk'
+'''  def validate_email(self, value):
+        """
+        Validate that the email is from the live.uwe.ac.uk domain.
+        """
+        if not value.endswith('@live.uwe.ac.uk'):
+            raise serializers.ValidationError(
+                "Registration is only allowed with a UWE email address (@live.uwe.ac.uk)"
+            )
+        return value
+'''
 
+    
     class Meta:
         model = User
         fields = (
